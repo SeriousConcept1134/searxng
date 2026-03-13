@@ -73,6 +73,9 @@ class RequestParams(t.TypedDict):
     'en', 'en-US', 'zh-HK' .. and others, for more details see
     :py:obj:`searx.locales`."""
 
+    results_per_page: int | None
+    """Number of results per page requested by the user."""
+
 
 class SuspendedStatus:
     """Class to handle suspend state."""
@@ -262,6 +265,7 @@ class EngineProcessor(ABC):
             "time_range": search_query.time_range,
             "engine_data": search_query.engine_data.get(self.engine.name, {}),
             "searxng_locale": search_query.lang,
+            "results_per_page": search_query.results_per_page,
         }
 
         # params["language"] is deprecated --> use params["searxng_locale"]
