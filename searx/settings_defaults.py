@@ -206,6 +206,8 @@ SCHEMA: dict[str, t.Any] = {
         },
         'formats': SettingsValue(list, OUTPUT_FORMATS),
         'max_page': SettingsValue(int, 0),
+        # Default results count for categories supporting dynamic pagination
+        'results_per_page': SettingsValue(int, 10),
     },
     'server': {
         'port': SettingsValue((int, str), 8888, 'SEARXNG_PORT'),

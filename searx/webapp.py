@@ -474,6 +474,11 @@ def pre_request():
 
     try:
         preferences.parse_dict(sxng_request.cookies)
+        # Manual overrides for standalone cookies (theme toggle and results-per-page selector)
+        if 'simple_style' in sxng_request.cookies:
+            preferences.key_value_settings['simple_style'].parse(sxng_request.cookies['simple_style'])
+        if 'results_per_page' in sxng_request.cookies:
+            preferences.key_value_settings['results_per_page'].parse(sxng_request.cookies['results_per_page'])
 
     except Exception as e:  # pylint: disable=broad-except
         logger.exception(e, exc_info=True)
@@ -695,6 +700,11 @@ def search():
 
     results = result_container.get_ordered_results()
 
+    # Trim results based on user preference (currently enabled only for video searches)
+    results_per_page = search_query.results_per_page
+    if search_query.is_video_search and results_per_page is not None:
+        results = results[:results_per_page]
+
     if search_query.redirect_to_first_result and results:
         return redirect(results[0]['url'], 302)
 
@@ -753,15 +763,42 @@ def search():
     # search_query.lang contains the user choice (all, auto, en, ...)
     # when the user choice is "auto", search.search_query.lang contains the detected language
     # otherwise it is equals to search_query.lang
+    
+    # Identify all categories triggered by the engines in this query.
+    # We prefer categories triggered by specific engine bangs (e.g. !gov -> videos).
+    # If no specific engine was forced, we use the explicitly selected categories.
+    explicit_categories = search_query.categories
+    triggered_categories = []
+    
+    # Check if any engine has a specific category that isn't 'general'
+    for engineref in search_query.engineref_list:
+        engine = engines.get(engineref.name)
+        if engine and hasattr(engine, 'categories'):
+            # If the engine supports 'videos', we treat it as a video-triggered query
+            if 'videos' in engine.categories:
+                triggered_categories = ['videos']
+                break
+            # Fallback to engine's first category if not general
+            if engine.categories and engine.categories[0] != 'general':
+                triggered_categories.append(engine.categories[0])
+
+    if not triggered_categories:
+        triggered_categories = explicit_categories
+    else:
+        triggered_categories = list(set(triggered_categories))
+
     return render(
         # fmt: off
         'results.html',
         results = results,
         q=sxng_request.form['q'],
         selected_categories = search_query.categories,
+        triggered_categories = triggered_categories,
         pageno = search_query.pageno,
         time_range = search_query.time_range or '',
         number_of_results = format_decimal(result_container.number_of_results),
+        results_per_page = results_per_page,
+        is_video_search = search_query.is_video_search,
         suggestions = suggestion_urls,
         answers = result_container.answers,
         corrections = correction_urls,

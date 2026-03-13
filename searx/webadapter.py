@@ -218,6 +218,34 @@ def parse_engine_data(form):
     return engine_data
 
 
+def parse_video_results_per_page(preferences, raw_text_query, query_engineref_list):
+    """Determine if current search is video-only and fetch the results-per-page preference."""
+    is_video_search = False
+    if query_engineref_list:
+        all_videos = True
+        for engineref in query_engineref_list:
+            engine = engines.get(engineref.name)
+            # If all selected engines belong to 'videos', we treat it as a video search
+            if not engine or 'videos' not in getattr(engine, 'categories', []):
+                all_videos = False
+                break
+        if all_videos:
+            is_video_search = True
+
+    # Categorical bang overrides (e.g. !videos, !gov, !yt) also trigger video search mode
+    if not is_video_search and any(ref.category == 'videos' for ref in raw_text_query.enginerefs):
+        is_video_search = True
+
+    results_per_page = None
+    if is_video_search:
+        results_per_page = preferences.key_value_settings['results_per_page'].get_value()
+        # Ensure we have a default from settings if preference is missing
+        if not results_per_page:
+            results_per_page = settings['search']['results_per_page']
+
+    return is_video_search, results_per_page
+
+
 def get_search_query_from_webapp(
     preferences: Preferences, form: Dict[str, str]
 ) -> Tuple[SearchQuery, RawTextQuery, List[EngineRef], List[EngineRef], str]:
@@ -280,6 +308,8 @@ def get_search_query_from_webapp(
         query_engineref_list, preferences
     )
 
+    is_video_search, results_per_page = parse_video_results_per_page(preferences, raw_text_query, query_engineref_list)
+
     return (
         SearchQuery(
             query,
@@ -292,6 +322,8 @@ def get_search_query_from_webapp(
             external_bang=external_bang,
             engine_data=engine_data,
             redirect_to_first_result=redirect_to_first_result,
+            results_per_page=results_per_page,
+            is_video_search=is_video_search,
         ),
         raw_text_query,
         query_engineref_list_unknown,

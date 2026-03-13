@@ -17,7 +17,8 @@
 {{- result_sub_footer(result) -}}
 {% if result.iframe_src -%}
 <div id="result-media-{{ index }}" class="embedded-content invisible">
-  <iframe data-src="{{result.iframe_src}}" frameborder="0" allowfullscreen></iframe>
+  {# Enhanced iframe permissions for modern browser compatibility and privacy #}
+  <iframe data-src="{{result.iframe_src}}" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 {%- endif %}
 {% if result.audio_src -%}

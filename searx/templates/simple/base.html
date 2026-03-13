@@ -27,7 +27,17 @@
   <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">
 </head>
-<body class="{{ endpoint }}_endpoint" >
+{%- set ns = namespace(has_videos=false) -%}
+{%- if results -%}
+  {%- for result in results -%}
+    {# Detect if any video results are present to enable video-specific styles #}
+    {%- if result.template in ['videos.html', 'videos'] -%}
+      {%- set ns.has_videos = true -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+{# Dynamic classes for video grid support and persistence. 'is_video_search' is provided by the backend. #}
+<body class="{{ endpoint }}_endpoint {% if is_video_search and request.cookies.get('video_grid_enabled') == 'true' %}video-grid-enabled{% endif %} {% if ns.has_videos %}results-videos-present{% endif %}" >
   <main id="main_{{  self._TemplateReference__context.name|replace("simple/", "")|replace(".html", "") }}" class="{{body_class}}">
     {% if errors %}
         <div class="dialog-error" role="alert">
@@ -42,6 +52,80 @@
 
     <nav id="links_on_top">
       {%- from 'simple/icons.html' import icon_big -%}
+      {%- if endpoint != 'preferences' -%}
+        {# Theme toggle UI: displays moon for light mode, sun for dark mode #}
+        {%- set current_style = request.cookies.get('simple_style', 'auto') -%}
+        {%- set preferred_dark = request.cookies.get('preferred_dark_style', 'dark') -%}
+        {%- if current_style == 'black' -%}{%- set preferred_dark = 'black' -%}
+        {%- elif current_style == 'dark' -%}{%- set preferred_dark = 'dark' -%}
+        {%- endif -%}
+        {%- set is_dark = current_style in ['dark', 'black'] -%}
+        <a id="theme-toggle" href="#" class="link_on_top_theme">
+          <span class="theme-icon-dark" {% if is_dark %}style="display: none;"{% endif %}>{{ icon_big('moon') }}</span>
+          <span class="theme-icon-light" {% if not is_dark %}style="display: none;"{% endif %}>{{ icon_big('sunny') }}</span>
+          <span class="theme-text">
+            {%- if is_dark -%}{{ _('Light mode') }}
+            {%- else -%}{{ _('Black mode') if preferred_dark == 'black' else _('Dark mode') }}
+            {%- endif -%}
+          </span>
+        </a>
+        <script>
+          (function() {
+            var toggle = document.getElementById('theme-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('click', function(e) {
+              e.preventDefault();
+              var html = document.documentElement;
+              
+              // Cookie helpers for theme persistence
+              var getCookie = function(name) {
+                var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+                return match ? match[2] : null;
+              };
+              var setCookie = function(name, value) {
+                var date = new Date();
+                date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+                document.cookie = name + "=" + value + "; expires=" + date.toUTCString() + "; path=/; SameSite=Lax";
+              };
+
+              // Determine current effective theme state (handling 'auto' and browser prefs)
+              var isDark = html.classList.contains('theme-dark') || 
+                           html.classList.contains('theme-black') || 
+                           (html.classList.contains('theme-auto') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              
+              if (html.className.indexOf('theme-') === -1) {
+                 isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              }
+
+              // Update style preference based on current state
+              var preferredDark = getCookie('preferred_dark_style') || 'dark';
+              if (html.classList.contains('theme-black')) preferredDark = 'black';
+              else if (html.classList.contains('theme-dark')) preferredDark = 'dark';
+
+              var newStyle = isDark ? 'light' : preferredDark;
+              
+              // Apply new theme class to the document root
+              html.classList.remove('theme-auto', 'theme-light', 'theme-dark', 'theme-black');
+              html.classList.add('theme-' + newStyle);
+              
+              // Synchronize the toggle button UI
+              var darkIcon = toggle.querySelector('.theme-icon-dark');
+              var lightIcon = toggle.querySelector('.theme-icon-light');
+              var text = toggle.querySelector('.theme-text');
+              var isNowDark = (newStyle === 'dark' || newStyle === 'black');
+              
+              darkIcon.style.display = isNowDark ? 'none' : 'inline-block';
+              lightIcon.style.display = isNowDark ? 'inline-block' : 'none';
+              text.textContent = isNowDark ? '{{ _("Light mode") }}' : (preferredDark === 'black' ? '{{ _("Black mode") }}' : '{{ _("Dark mode") }}');
+              
+              // Persist the user selection in cookies
+              setCookie('simple_style', newStyle);
+              setCookie('preferred_dark_style', preferredDark);
+            });
+          })();
+        </script>
+      {%- endif -%}
       {%- block linkto_about -%}
         <a href="{{ url_for('info', pagename='about') }}" class="link_on_top_about">{{ icon_big('information-circle') }}<span>{{ _('About') }}</span></a>
       {%- endblock -%}

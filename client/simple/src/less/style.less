@@ -410,8 +410,10 @@ article[data-vim-selected].category-social {
 }
 
 .result-videos {
+  /* Ensure video thumbnails default to 20rem in regular view by increasing selector specificity */
   a.thumbnail_link img.thumbnail {
     width: 20rem;
+    height: auto;
   }
 
   .content {
@@ -422,6 +424,24 @@ article[data-vim-selected].category-social {
     width: 100%;
     aspect-ratio: 16 / 9;
     padding: 10px 0 0 0;
+  }
+
+  /* Standardize grey metadata styling for video results across all views */
+  .published_date,
+  .result_length,
+  .result_views,
+  .result_author,
+  .result_shipping,
+  .result_source_country,
+  .highlight {
+    font-size: 0.8em;
+    color: var(--color-result-publishdate-font);
+  }
+
+  /* Prevent titles from inheriting the smaller metadata font size */
+  h3 .highlight {
+    font-size: inherit;
+    color: inherit;
   }
 }
 
@@ -1032,6 +1052,10 @@ summary.title {
     / 100%;
   gap: 0;
 
+  #sidebar {
+    display: none;
+  }
+
   #urls {
     margin: 0;
     display: flex;
@@ -1118,6 +1142,7 @@ summary.title {
     display: none;
   }
 
+  .result-paper,
   .result-packages {
     .attributes {
       display: block;
@@ -1166,3 +1191,150 @@ pre code {
 @import "result_types/code.less";
 @import "result_types/paper.less";
 @import "result_types/file.less";
+
+/* Video Grid View Configuration */
+
+#video-view-config {
+  display: inline-flex;
+  align-items: center;
+}
+
+#video-view-config .filter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  height: 2.4rem;
+
+  label {
+    white-space: nowrap;
+    font-size: 0.9rem;
+    color: var(--color-search-font);
+    font-family: inherit;
+  }
+
+  input[type="range"] {
+    margin: 0;
+  }
+}
+
+.grid-only {
+  display: none !important;
+}
+
+/* Dynamically toggle the dynamic size slider based on grid-view state */
+body.results-videos-present.video-grid-enabled .grid-only {
+  display: inline-flex !important;
+}
+
+/* Video Grid Layout Rules */
+body.video-grid-enabled.results-videos-present {
+  #results {
+    margin: 1rem @results-tablet-offset 0 @results-tablet-offset !important;
+    display: grid !important;
+    grid-template:
+      "corrections" min-content
+      "answers" min-content
+      "sidebar" min-content
+      "urls" 1fr
+      "pagination" min-content
+      / 100% !important;
+    gap: 0 !important;
+
+    #sidebar {
+      margin-bottom: 1rem !important;
+    }
+
+    #urls {
+      flex-wrap: wrap !important;
+      gap: 1rem !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      display: flex !important;
+    }
+
+    #urls::after {
+      flex-grow: 10 !important;
+      content: "" !important;
+    }
+
+    .result-videos {
+      flex: none !important;
+      display: flex !important;
+      flex-direction: column !important;
+      width: var(--video-size, 300px) !important;
+      margin: 0 !important;
+      padding: 0.5rem !important;
+      border: 1px solid var(--color-result-border) !important;
+      border-radius: 8px !important;
+      background: var(--color-result-background) !important;
+
+      /* Override default layout flows to allow flexbox 'order' property to function */
+      > * {
+        order: 10;
+      }
+      
+      /* Element Ordering in Grid: URL -> Engines -> Thumbnail -> Title -> Desc -> Metadata -> Button */
+      .url_header { order: 1; }
+      .engines {
+        order: 2;
+        margin-bottom: 0.5rem;
+        float: none !important;
+        justify-content: flex-start !important;
+        padding: 0 !important;
+        display: flex !important;
+
+        span, a, svg {
+          font-size: 0.8rem !important;
+          line-height: 1;
+          margin-top: 0 !important;
+        }
+      }
+      .thumbnail_link { 
+        order: 3;
+        float: none !important;
+        display: block !important;
+        margin: 0 0 0.5rem 0 !important;
+        width: 100% !important;
+        height: auto !important;
+
+        img.thumbnail {
+          width: 100% !important;
+          height: auto !important;
+          aspect-ratio: 16 / 9 !important;
+          object-fit: cover !important;
+          padding: 0 !important;
+        }
+      }
+      h3 {
+        order: 4;
+        margin: 0 0 0.5rem 0 !important;
+        font-size: 1rem !important;
+        overflow-wrap: anywhere !important;
+      }
+      .content {
+        order: 5;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 3 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        font-size: 0.85rem !important;
+        line-height: 1.2 !important;
+      }
+      /* Place metadata block below the description for improved grid aesthetics */
+      .published_date, .result_length, .result_views, .result_author, .result_shipping, .result_source_country, div.highlight {
+        order: 6;
+        display: inline-block !important;
+        margin-right: 0.5rem !important;
+      }
+      .altlink { order: 7; }
+      .embedded-video { order: 8; }
+    }
+
+    #backToTop {
+      .ltr-left(auto) !important;
+      .ltr-right(1rem) !important;
+    }
+  }
+}

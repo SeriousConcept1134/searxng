@@ -28,6 +28,23 @@ class EngineRef:
 class SearchQuery:
     """container for all the search parameters (query, language, etc...)"""
 
+    __slots__ = (
+        'query',
+        'engineref_list',
+        'lang',
+        'locale',
+        'safesearch',
+        'pageno',
+        'time_range',
+        'timeout_limit',
+        'external_bang',
+        'engine_data',
+        'redirect_to_first_result',
+        # Added to support dynamic results-per-page for specific categories (e.g. videos)
+        'results_per_page',
+        'is_video_search',
+    )
+
     def __init__(
         self,
         query: str,
@@ -40,6 +57,8 @@ class SearchQuery:
         external_bang: str | None = None,
         engine_data: dict[str, dict[str, str]] | None = None,
         redirect_to_first_result: bool | None = None,
+        results_per_page: int | None = None,
+        is_video_search: bool = False,
     ):  # pylint:disable=too-many-arguments
         self.query = query
         self.engineref_list = engineref_list
@@ -51,6 +70,8 @@ class SearchQuery:
         self.external_bang = external_bang
         self.engine_data = engine_data or {}
         self.redirect_to_first_result = redirect_to_first_result
+        self.results_per_page = results_per_page
+        self.is_video_search = is_video_search
 
         self.locale = None
         if self.lang:
@@ -64,7 +85,7 @@ class SearchQuery:
         return list(set(map(lambda engineref: engineref.category, self.engineref_list)))
 
     def __repr__(self):
-        return "SearchQuery({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+        return "SearchQuery({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.query,
             self.engineref_list,
             self.lang,
@@ -74,6 +95,8 @@ class SearchQuery:
             self.timeout_limit,
             self.external_bang,
             self.redirect_to_first_result,
+            self.results_per_page,
+            self.is_video_search,
         )
 
     def __eq__(self, other):
@@ -87,6 +110,8 @@ class SearchQuery:
             and self.timeout_limit == other.timeout_limit
             and self.external_bang == other.external_bang
             and self.redirect_to_first_result == other.redirect_to_first_result
+            and self.results_per_page == other.results_per_page
+            and self.is_video_search == other.is_video_search
         )
 
     def __hash__(self):
@@ -101,10 +126,13 @@ class SearchQuery:
                 self.timeout_limit,
                 self.external_bang,
                 self.redirect_to_first_result,
+                self.results_per_page,
+                self.is_video_search,
             )
         )
 
     def __copy__(self):
+        """Returns a clone of the SearchQuery object."""
         return SearchQuery(
             self.query,
             self.engineref_list,
@@ -116,4 +144,6 @@ class SearchQuery:
             self.external_bang,
             self.engine_data,
             self.redirect_to_first_result,
+            self.results_per_page,
+            self.is_video_search,
         )

@@ -75,7 +75,9 @@ const simple_icons: IconSet[] = [
     base: resolve(HERE, "src/svg/ionicons"),
     set: {
       "information-circle": "information-circle-outline.svg",
-      newspaper: "newspaper-outline.svg"
+      newspaper: "newspaper-outline.svg",
+      moon: "moon-outline.svg",
+      sunny: "sunny-outline.svg"
     },
     svgo_opts: sxng_icon_opts
   }

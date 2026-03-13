@@ -12,6 +12,7 @@ engines:
 """
 
 import random
+import json
 import re
 import string
 import time
@@ -23,6 +24,7 @@ import babel.core
 import babel.languages
 from lxml import html
 
+from searx import logger
 from searx.enginelib.traits import EngineTraits
 from searx.exceptions import SearxEngineCaptchaException
 from searx.locales import get_official_locales, language_tag, region_tag
@@ -312,7 +314,7 @@ def request(query: str, params: "OnlineParams") -> None:
                 # 'sstk': 'AcOHfVkD7sWCSAheZi-0tx_09XDO55gTWY0JNq3_V26cNN-c8lfD45aZYPI8s_Bqp8s57AHz5pxchDtAGCA_cikAWSjy9kw3kgg'
                 # formally known as use_mobile_ui
                 # "asearch": "arc",
-                # "async": str_async,
+                # "async": ui_async(start),
             }
         )
     )
@@ -335,6 +337,15 @@ RE_DATA_IMAGE_end = re.compile(r'"(dimg_[^"]*)"[^;]*;(data:image[^;]*;[^;]*)$')
 
 def parse_data_images(text: str):
     data_image_map = {}
+
+    # Google often serves image maps in a JSON-like structure (ldi or pim).
+    # Capturing this ensures we can map image IDs to their actual data URLs.
+    for match in re.finditer(r'google\.(?:ldi|pim)=({.*?});', text):
+        try:
+            data = json.loads(match.group(1))
+            data_image_map.update(data)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.debug("google parse_data_images json error: %s", e)
 
     for img_id, data_image in RE_DATA_IMAGE.findall(text):
         end_pos = data_image.rfind("=")
@@ -385,22 +396,30 @@ def response(resp: "SXNG_Response"):
             else:
                 url = raw_url
 
-            content_nodes = eval_xpath(result, './/div[contains(@data-sncf, "1")]')
+            # Modern Google snippet logic using multiple data-sncf attribute values
+            content_nodes = eval_xpath(result, './/div[@data-sncf="1" or @data-sncf="2"]')
             for item in content_nodes:
                 for script in item.xpath(".//script"):
                     script.getparent().remove(script)
 
             content = extract_text(content_nodes)
 
-            thumbnail = result.xpath(".//img/@src")
-            if thumbnail:
-                thumbnail = thumbnail[0]
-                if thumbnail.startswith("data:image"):
-                    img_id = result.xpath(".//img/@id")
-                    if img_id:
-                        thumbnail = data_image_map.get(img_id[0])
-            else:
-                thumbnail = None
+            # Refined thumbnail extraction: Loop through all images to find the best match,
+            # excluding favicons and irrelevant UI elements.
+            thumbnail = None
+            for img in result.xpath('.//img'):
+                src = img.get('src')
+                if not src:
+                    continue
+
+                if src.startswith('data:image'):
+                    img_id = img.get('id')
+                    thumbnail = data_image_map.get(img_id)
+                    if thumbnail:
+                        break
+                elif 'favicon' not in src and img.get('class') != 'XNo5Ab':
+                    thumbnail = src
+                    break
 
             results.append({"url": url, "title": title, "content": content or '', "thumbnail": thumbnail})
 
