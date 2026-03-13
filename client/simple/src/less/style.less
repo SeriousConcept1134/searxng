@@ -850,9 +850,21 @@ summary.title {
 
 #pagination {
   grid-area: pagination;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
   br {
     clear: both;
+  }
+
+  .previous_page,
+  .next_page {
+    margin: 0 1rem;
+
+    div {
+      float: none !important;
+    }
   }
 }
 
