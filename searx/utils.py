@@ -611,11 +611,11 @@ def get_embeded_stream_url(url: str):
     if parsed_url.netloc in ['www.youtube.com', 'youtube.com'] and parsed_url.path == '/watch' and parsed_url.query:
         video_id = parse_qs(parsed_url.query).get('v', [])
         if video_id:
-            iframe_src = 'https://www.youtube-nocookie.com/embed/' + video_id[0]
+            iframe_src = 'https://www.youtube-nocookie.com/embed/' + video_id[0] + '?autoplay=0'
 
     # Facebook
     elif parsed_url.netloc in ['www.facebook.com', 'facebook.com']:
-        encoded_href = urlencode({'href': url})
+        encoded_href = urlencode({'href': url, 'autoplay': '0'})
         iframe_src = 'https://www.facebook.com/plugins/video.php?allowfullscreen=true&' + encoded_href
 
     # Instagram
@@ -640,7 +640,7 @@ def get_embeded_stream_url(url: str):
         path_parts = parsed_url.path.split('/')
         if len(path_parts) == 3:
             video_id = path_parts[2]
-            iframe_src = 'https://www.dailymotion.com/embed/video/' + video_id
+            iframe_src = 'https://www.dailymotion.com/embed/video/' + video_id + '?autoplay=0'
 
     # Bilibili
     elif parsed_url.netloc in ['www.bilibili.com', 'bilibili.com'] and parsed_url.path.startswith('/video/'):

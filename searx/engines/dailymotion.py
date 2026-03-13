@@ -91,7 +91,7 @@ search_url = "https://api.dailymotion.com/videos?"
 - `Video filters API`_
 """
 
-iframe_src = "https://www.dailymotion.com/embed/video/{video_id}"
+iframe_src = "https://www.dailymotion.com/embed/video/{video_id}?autoplay=0"
 """URL template to embed video in SearXNG's result list."""
 
 

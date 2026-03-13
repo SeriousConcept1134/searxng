@@ -48,7 +48,7 @@ def response(resp):
                 "length": item['duration'],
                 "views": item['view_count'],
                 "thumbnail": item['thumbnail_url'],
-                "iframe_src": 'https://www.bitchute.com/embed/' + item['video_id'],
+                "iframe_src": 'https://www.bitchute.com/embed/' + item['video_id'] + '/?autoplay=0',
                 "template": "videos.html",
             }
         )
