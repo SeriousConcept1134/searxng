@@ -136,12 +136,20 @@ class Search:
     def search_multiple_requests(self, requests: list[tuple[str, str, RequestParams]]):
         # pylint: disable=protected-access
         search_id = str(uuid4())
+        is_single_video_engine = len(requests) == 1 and self.search_query.is_video_search
 
         for engine_name, query, request_params in requests:
             _search = copy_current_request_context(PROCESSORS[engine_name].search)
             th = threading.Thread(  # pylint: disable=invalid-name
                 target=_search,
-                args=(query, request_params, self.result_container, self.start_time, self.actual_timeout),
+                args=(
+                    query,
+                    request_params,
+                    self.result_container,
+                    self.start_time,
+                    self.actual_timeout,
+                    is_single_video_engine,
+                ),
                 name=search_id,
             )
             th._timeout = False

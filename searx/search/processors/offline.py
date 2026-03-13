@@ -20,6 +20,7 @@ class OfflineProcessor(EngineProcessor):
         result_container: "ResultContainer",
         start_time: float,
         timeout_limit: float,
+        is_single_video_engine: bool = False,
     ):
         try:
             search_results = self.engine.search(query, params)

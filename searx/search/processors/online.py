@@ -12,6 +12,7 @@ import httpx
 
 import searx.network
 from searx.utils import gen_useragent
+from searx.search.multipaging import fetch_multiple_pages
 from searx.exceptions import (
     SearxEngineAccessDeniedException,
     SearxEngineCaptchaException,
@@ -243,12 +244,15 @@ class OnlineProcessor(EngineProcessor):
         result_container: "ResultContainer",
         start_time: float,
         timeout_limit: float,
+        is_single_video_engine: bool = False,
     ):
         self.init_network_in_thread(start_time, timeout_limit)
 
         try:
             # send requests and parse the results
             search_results = self._search_basic(query, params)
+            if is_single_video_engine and search_results:
+                search_results = fetch_multiple_pages(self, query, params, search_results)
             self.extend_container(result_container, start_time, search_results)
         except ssl.SSLError as e:
             # requests timeout (connect or read)

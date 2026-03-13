@@ -290,6 +290,7 @@ class EngineProcessor(ABC):
         result_container: "ResultContainer",
         start_time: float,
         timeout_limit: float,
+        is_single_video_engine: bool = False,
     ):
         pass
 

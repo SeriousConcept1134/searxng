@@ -12,9 +12,8 @@
    https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs
 """
 
-from urllib.parse import urlencode, urlparse, parse_qs, unquote, urlunparse
+from urllib.parse import urlencode, urlparse, parse_qs, unquote
 from lxml import html
-import searx.network
 
 from searx.utils import (
     eval_xpath_list,
@@ -47,6 +46,7 @@ about = {
 # engine dependent config
 categories = ['videos', 'web']
 paging = True
+results_per_page = 10
 max_page = 50
 language_support = True
 time_range_support = True
@@ -56,10 +56,13 @@ safesearch = True
 def request(query, params):
     """Google-Video search request"""
     google_info = get_google_info(params, traits)
-    results_per_page = params.get('results_per_page', 10)
 
     # Calculate starting offset based on user results-per-page preference
-    start = (params['pageno'] - 1) * results_per_page
+    # The external multi-paging logic handles stitching when results_per_page > 10.
+    # Here we calculate the offset for the specific 'pageno' provided.
+    # When results_per_page is e.g. 30, page 1 maps to offset 0, page 2 to offset 30, etc.
+    results_per_page_pref = params.get('results_per_page', results_per_page)
+    start = (params['pageno'] - 1) * results_per_page_pref
 
     query_url = (
         'https://'
@@ -89,11 +92,13 @@ def request(query, params):
     return params
 
 
-def _parse_results(resp_text):
-    """Helper to parse results from Google Videos HTML/Async response"""
+def response(resp):
+    """Get response from google's search request"""
+    detect_google_sorry(resp)
+
     results = []
-    data_image_map = parse_data_images(resp_text)
-    dom = html.fromstring(resp_text)
+    data_image_map = parse_data_images(resp.text)
+    dom = html.fromstring(resp.text)
 
     # Target individual result containers (jsname="pKB8Bc" and WVV5ke are modern stable attributes)
     # Exclude top-level MjjYud if it contains pKB8Bc to avoid duplicate results.
@@ -199,58 +204,5 @@ def _parse_results(resp_text):
     # parse suggestion
     for suggestion in eval_xpath_list(dom, suggestion_xpath):
         results.append({'suggestion': extract_text(suggestion)})
-
-    return results
-
-
-def response(resp):
-    """Get response from google's search request"""
-    detect_google_sorry(resp)
-
-    # Use the helper to parse the first page
-    results = _parse_results(resp.text)
-
-    search_params = resp.search_params
-    results_per_page = search_params.get('results_per_page', 10)
-
-    # Count actual results (excluding suggestions) to decide if multi-fetch is needed
-    actual_results_count = sum(1 for r in results if 'url' in r)
-
-    # Adaptive multi-fetch: Google returns ~10 results per request.
-    # If the user requested more (e.g., 20 or 50), we perform consecutive background requests
-    # to stitch the results together into a single page.
-    if results_per_page > 10 and actual_results_count > 0:
-        parsed_url = urlparse(str(resp.url))
-        query_params = parse_qs(parsed_url.query)
-
-        current_start = int(query_params.get('start', [0])[0])
-        # Maximum offset for the current results-per-page block
-        max_start = (search_params['pageno'] * results_per_page) - 10
-
-        while sum(1 for r in results if 'url' in r) < results_per_page and current_start < max_start:
-            current_start += 10
-            query_params['start'] = [str(current_start)]
-            # Regenerate the hourly async/asearch tokens for each sub-request
-            if 'async' in query_params:
-                query_params['async'] = [ui_async(current_start)]
-
-            new_url = urlunparse(parsed_url._replace(query=urlencode(query_params, doseq=True)))
-
-            headers = search_params['headers'].copy()
-            sub_resp = searx.network.get(
-                new_url, headers=headers, cookies=search_params['cookies'], raise_for_httperror=False
-            )
-
-            if sub_resp.status_code != 200:
-                break
-
-            detect_google_sorry(sub_resp)
-            new_results = _parse_results(sub_resp.text)
-            new_actual_results = [r for r in new_results if 'url' in r]
-
-            if not new_actual_results:
-                break
-
-            results.extend(new_results)
 
     return results
