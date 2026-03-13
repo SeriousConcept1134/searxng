@@ -1,3 +1,5 @@
+{% set is_video_search = 'videos' in selected_categories %}
+{% set grid_size = request.cookies.get('video_grid_size', '300') %}
 <form id="search" method="{{ method or 'POST' }}" action="{{ url_for('search') }}" role="search">
   <div id="search_header">
     <a id="search_logo" href="{{ url_for('index') }}" tabindex="0" title="{{ _('Display the front page') }}">
@@ -19,6 +21,19 @@
     {% include 'simple/filters/languages.html' %}
     {% include 'simple/filters/time_range.html' %}
     {% include 'simple/filters/safesearch.html' %}
+    {% if is_video_search %}
+    {# UI controls for the video grid view and resizing #}
+    <div id="video-view-config">
+      <div class="filter-item">
+        <label for="video-grid-toggle">{{ _('Grid View') }}</label>
+        <input type="checkbox" id="video-grid-toggle" class="checkbox-onoff" {% if request.cookies.get('video_grid_enabled') == 'true' %}checked{% endif %}>
+      </div>
+      <div class="filter-item grid-only">
+        <label for="video-grid-size">{{ _('Size') }}</label>
+        <input type="range" id="video-grid-size" min="150" max="500" value="{{ grid_size }}">
+      </div>
+    </div>
+    {% endif %}
   </div>
   <input type="hidden" name="theme" value="{{ theme }}" >
   {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}

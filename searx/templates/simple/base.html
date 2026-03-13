@@ -27,7 +27,18 @@
   <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">
 </head>
-<body class="{{ endpoint }}_endpoint" >
+{%- set is_video_search = 'videos' in selected_categories -%}
+{%- set ns = namespace(has_videos=false) -%}
+{%- if results -%}
+  {%- for result in results -%}
+    {# Detect if any video results are present to enable video-specific styles (without triggering full grid layout) #}
+    {%- if result.template in ['videos.html', 'videos'] -%}
+      {%- set ns.has_videos = true -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+{# Dynamic classes for video grid support and persistence #}
+<body class="{{ endpoint }}_endpoint {% if is_video_search and request.cookies.get('video_grid_enabled') == 'true' %}video-grid-enabled{% endif %} {% if ns.has_videos %}results-videos-present{% endif %}" >
   <main id="main_{{  self._TemplateReference__context.name|replace("simple/", "")|replace(".html", "") }}" class="{{body_class}}">
     {% if errors %}
         <div class="dialog-error" role="alert">
