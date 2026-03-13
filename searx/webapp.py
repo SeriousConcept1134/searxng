@@ -474,6 +474,9 @@ def pre_request():
 
     try:
         preferences.parse_dict(sxng_request.cookies)
+        # Manual override for 'simple_style' cookie to support the top-toolbar theme toggle
+        if 'simple_style' in sxng_request.cookies:
+            preferences.key_value_settings['simple_style'].parse(sxng_request.cookies['simple_style'])
 
     except Exception as e:  # pylint: disable=broad-except
         logger.exception(e, exc_info=True)
