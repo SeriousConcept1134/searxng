@@ -426,6 +426,10 @@ article[data-vim-selected].category-social {
     padding: 10px 0 0 0;
   }
 
+  .result-metadata-container {
+    display: block;
+  }
+
   /* Standardize grey metadata styling for video results across all views */
   .published_date,
   .result_length,
@@ -1322,12 +1326,19 @@ body.video-grid-enabled.results-videos-present {
         font-size: 0.85rem !important;
         line-height: 1.2 !important;
       }
-      /* Place metadata block below the description with a small vertical gap */
-      .published_date, .result_length, .result_views, .result_author, .result_shipping, .result_source_country, div.highlight {
+      /* Place metadata container below the description with a small vertical gap */
+      .result-metadata-container {
         order: 6;
-        display: inline-block !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 0 !important;
         margin-top: 0.5rem !important;
-        margin-right: 0.5rem !important;
+      }
+      .published_date, .result_length, .result_views, .result_author, .result_shipping, .result_source_country, div.highlight {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
       }
       .altlink { order: 7; }
       .embedded-video { order: 8; }
