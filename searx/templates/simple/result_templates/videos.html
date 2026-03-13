@@ -1,7 +1,9 @@
 {% from 'simple/macros.html' import result_header, result_sub_header, result_sub_footer, result_footer with context %}
 
 {{ result_header(result, favicons, image_proxify) }}
+<div class="result-metadata-container">
 {{ result_sub_header(result) }}
+</div>
 {% if result.iframe_src -%}
 <p class="altlink"> <a class="btn-collapse collapsed media-loader disabled_if_nojs" data-target="#result-video-{{ index }}" data-btn-text-collapsed="{{ _('show video') }}" data-btn-text-not-collapsed="{{ _('hide video') }}">{{ icon_small('film') }} {{ _('show video') }}</a></p>
 {%- endif %}
