@@ -10,6 +10,56 @@
 {% block title %}{% if query_in_title %}{{- q|e }} - {% endif %}{% endblock %}
 {% block meta %}<link rel="alternate" type="application/rss+xml" title="Searx search: {{ q|e }}" href="{{ url_for('search', _external=True) }}?q={{ q|urlencode }}&amp;categories={{ selected_categories|join(",") | replace(' ','+') }}&amp;pageno={{ pageno }}&amp;time_range={{ time_range }}&amp;language={{ current_language }}&amp;safesearch={{ safesearch }}&amp;format=rss">{% endblock %}
 {% block content %}
+<script>
+  (function() {
+    /**
+     * Logic for the results-per-page selector.
+     * Persists selection in a cookie and re-submits the form while preserving selected categories.
+     */
+    function setCookie(name, value, days) {
+      var date = new Date();
+      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = name + "=" + (value || "") + "; expires=" + date.toUTCString() + "; path=/; SameSite=Lax";
+    }
+
+    function init() {
+      var resultsPerPage = document.getElementById('results_per_page');
+      if (!resultsPerPage) return;
+
+      resultsPerPage.addEventListener('change', function() {
+        setCookie('results_per_page', this.value, 365);
+        var mainForm = document.getElementById('search') || document.querySelector('form.search_form');
+        
+        if (mainForm) {
+          // Ensure the selector's name/value is included in the submit
+          resultsPerPage.setAttribute('name', 'results_per_page');
+          
+          // Re-inject hidden inputs for all selected categories to avoid defaulting to 'general'
+          {% for category in selected_categories %}
+          var catInput = document.createElement('input');
+          catInput.type = 'hidden';
+          catInput.name = 'category_{{ category }}';
+          catInput.value = '1';
+          mainForm.appendChild(catInput);
+          {% endfor %}
+
+          mainForm.submit();
+        } else {
+          // Fallback if form is missing
+          var url = new URL(window.location.href);
+          url.searchParams.set('results_per_page', this.value);
+          window.location.href = url.toString();
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+</script>
 {% include 'simple/search.html' %}
 
 {% if results and results|map(attribute='template')|unique|list|count == 1 %}
@@ -89,6 +139,7 @@
                   <input type="hidden" name="language" value="{{ current_language }}" >
                   <input type="hidden" name="time_range" value="{{ time_range }}" >
                   <input type="hidden" name="safesearch" value="{{ safesearch }}" >
+                  {% if results_per_page %}<input type="hidden" name="results_per_page" value="{{ results_per_page }}" >{% endif %}
                   <input type="hidden" name="theme" value="{{ theme }}" >
                   {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
                   {{- engine_data_form(engine_data) -}}
@@ -107,6 +158,7 @@
                 <input type="hidden" name="language" value="{{ current_language }}" >
                 <input type="hidden" name="time_range" value="{{ time_range }}" >
                 <input type="hidden" name="safesearch" value="{{ safesearch }}" >
+                {% if results_per_page %}<input type="hidden" name="results_per_page" value="{{ results_per_page }}" >{% endif %}
                 <input type="hidden" name="theme" value="{{ theme }}" >
                 {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
                 {{- engine_data_form(engine_data) -}}
@@ -132,6 +184,7 @@
                 <input type="hidden" name="language" value="{{ current_language }}" >
                 <input type="hidden" name="time_range" value="{{ time_range }}" >
                 <input type="hidden" name="safesearch" value="{{ safesearch }}" >
+                {% if results_per_page %}<input type="hidden" name="results_per_page" value="{{ results_per_page }}" >{% endif %}
                 <input type="hidden" name="theme" value="{{ theme }}" >
                 {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
                 {{- engine_data_form(engine_data) -}}

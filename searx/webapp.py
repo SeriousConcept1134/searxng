@@ -474,6 +474,11 @@ def pre_request():
 
     try:
         preferences.parse_dict(sxng_request.cookies)
+        # Manual overrides for standalone cookies (theme toggle and results-per-page selector)
+        if 'simple_style' in sxng_request.cookies:
+            preferences.key_value_settings['simple_style'].parse(sxng_request.cookies['simple_style'])
+        if 'results_per_page' in sxng_request.cookies:
+            preferences.key_value_settings['results_per_page'].parse(sxng_request.cookies['results_per_page'])
 
     except Exception as e:  # pylint: disable=broad-except
         logger.exception(e, exc_info=True)
@@ -695,6 +700,11 @@ def search():
 
     results = result_container.get_ordered_results()
 
+    # Trim results based on user preference (currently enabled only for video searches)
+    results_per_page = search_query.results_per_page
+    if search_query.is_video_search and results_per_page is not None:
+        results = results[:results_per_page]
+
     if search_query.redirect_to_first_result and results:
         return redirect(results[0]['url'], 302)
 
@@ -762,6 +772,7 @@ def search():
         pageno = search_query.pageno,
         time_range = search_query.time_range or '',
         number_of_results = format_decimal(result_container.number_of_results),
+        results_per_page = results_per_page,
         suggestions = suggestion_urls,
         answers = result_container.answers,
         corrections = correction_urls,
