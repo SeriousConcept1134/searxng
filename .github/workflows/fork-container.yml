@@ -20,7 +20,9 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.14"
+  NODE_VERSION: "22"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GITHUB_REPOSITORY_OWNER: seriousconcept1134
   OWNER_LC: seriousconcept1134
   IMAGE_NAME: searxng-enhanced
 
@@ -56,6 +58,11 @@ jobs:
           sudo cp -rfv ./podman-linux-${{ matrix.march }}/usr/. /usr/
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -68,6 +75,9 @@ jobs:
 
       - name: Install dependencies for versioning
         run: pip install -r requirements.txt
+
+      - name: Build Frontend Assets
+        run: make themes.all
 
       - name: Get info
         id: info
@@ -83,7 +93,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: "ghcr.io"
-          username: "${{ github.repository_owner }}"
+          username: "${{ env.GITHUB_REPOSITORY_OWNER }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Build and Push
@@ -99,7 +109,6 @@ jobs:
             .
           
           # 2. Build the final dist image
-          # Use architecture-specific tags within the same package to avoid creating a 'cache' package
           FINAL_IMAGE="ghcr.io/${{ env.OWNER_LC }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}-only"
           
           podman build \
@@ -115,41 +124,34 @@ jobs:
           podman push "$FINAL_IMAGE"
 
   release:
-    name: Create Multi-arch Manifest
+    name: Release
     runs-on: ubuntu-24.04
     needs: build
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: "ghcr.io"
-          username: "${{ github.repository_owner }}"
+          username: "${{ env.GITHUB_REPOSITORY_OWNER }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Create and Push Manifest
+      - name: Release
         env:
-          OWNER_LC: "${{ env.OWNER_LC }}"
-          NAME: "${{ env.IMAGE_NAME }}"
-          TAG: "${{ needs.build.outputs.docker_tag }}"
+          GIT_URL: "${{ needs.build.outputs.git_url }}"
+          DOCKER_TAG: "${{ needs.build.outputs.docker_tag }}"
+          CONTAINER_IMAGE_ORGANIZATION: "${{ env.OWNER_LC }}"
+          CONTAINER_IMAGE_NAME: "${{ env.IMAGE_NAME }}"
         run: |
-          IMAGE_BASE="ghcr.io/$OWNER_LC/$NAME"
+          IMAGE_BASE="ghcr.io/$CONTAINER_IMAGE_ORGANIZATION/$CONTAINER_IMAGE_NAME"
           
-          # Build list of tags to create (version-specific and latest)
-          TAGS=("latest")
-          if [ -n "$TAG" ]; then
-            TAGS+=("$TAG")
-          fi
-          
-          for t in "${TAGS[@]}"; do
-            echo "Creating multi-arch manifest for $IMAGE_BASE:$t"
-            # Cleanup existing local manifest
+          for t in "$DOCKER_TAG" "latest"; do
+            echo "Creating manifest for $IMAGE_BASE:$t"
             podman manifest rm "$IMAGE_BASE:$t" || true
             podman manifest create "$IMAGE_BASE:$t"
-            
-            # Add architecture-specific images from the same package
             podman manifest add "$IMAGE_BASE:$t" "docker://$IMAGE_BASE:amd64-only"
             podman manifest add "$IMAGE_BASE:$t" "docker://$IMAGE_BASE:arm64-only"
-            
-            # Push the final multi-arch manifest to GHCR
             podman manifest push "$IMAGE_BASE:$t" "docker://$IMAGE_BASE:$t"
           done
