@@ -854,6 +854,12 @@ summary.title {
   justify-content: center;
   align-items: center;
 
+  // Add spacing for grid-based layouts to match standard 1rem result margin
+  #results.only_template_images &,
+  body.video-grid-enabled & {
+    margin-top: 1rem;
+  }
+
   br {
     clear: both;
   }
