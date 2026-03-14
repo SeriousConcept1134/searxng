@@ -56,13 +56,7 @@ safesearch = True
 def request(query, params):
     """Google-Video search request"""
     google_info = get_google_info(params, traits)
-
-    # Calculate starting offset based on user results-per-page preference
-    # The external multi-paging logic handles stitching when results_per_page > 10.
-    # Here we calculate the offset for the specific 'pageno' provided.
-    # When results_per_page is e.g. 30, page 1 maps to offset 0, page 2 to offset 30, etc.
-    results_per_page_pref = params.get('results_per_page', results_per_page)
-    start = (params['pageno'] - 1) * results_per_page_pref
+    start = (params['pageno'] - 1) * 10
 
     query_url = (
         'https://'
