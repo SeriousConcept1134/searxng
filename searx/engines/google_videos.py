@@ -98,9 +98,11 @@ def response(resp):
     # Exclude top-level MjjYud if it contains pKB8Bc to avoid duplicate results.
     result_divs = eval_xpath_list(
         dom,
-        '//div[@jsname="pKB8Bc"]'
-        ' | //div[contains(@class, "WVV5ke")]'
-        ' | //div[contains(@class, "g ") and not(descendant::div[@jsname="pKB8Bc"])]',
+        (
+            '//div[@jsname="pKB8Bc"]'
+            ' | //div[contains(@class, "WVV5ke")]'
+            ' | //div[contains(@class, "g ") and not(descendant::div[@jsname="pKB8Bc"])]'
+        ),
     )
 
     for result in result_divs:
@@ -108,9 +110,11 @@ def response(resp):
         title = extract_text(
             eval_xpath_getindex(
                 result,
-                './/h3[contains(@class, "DKV0Md")]'
-                ' | .//h3[contains(@class, "LC20lb")]'
-                ' | .//div[@role="heading"]',
+                (
+                    './/h3[contains(@class, "DKV0Md")]'
+                    ' | .//h3[contains(@class, "LC20lb")]'
+                    ' | .//div[@role="heading"]'
+                ),
                 0,
                 default=None,
             ),
@@ -119,7 +123,10 @@ def response(resp):
 
         # URL extraction via stable jsname="UWckNb" or fallback redirector decoding
         url = eval_xpath_getindex(
-            result, './/a[@jsname="UWckNb"]/@href | .//a[contains(@href, "/url?q=")]/@href | .//a/@href', 0, default=None
+            result,
+            './/a[@jsname="UWckNb"]/@href | .//a[contains(@href, "/url?q=")]/@href | .//a/@href',
+            0,
+            default=None,
         )
         if url and url.startswith('/url?q='):
             url = unquote(url[7:].split('&sa=U')[0])

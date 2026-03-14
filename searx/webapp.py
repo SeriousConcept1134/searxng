@@ -458,6 +458,7 @@ def render(template_name: str, **kwargs):
 
 @app.before_request
 def pre_request():
+    # pylint: disable=too-many-branches
     sxng_request.start_time = default_timer()  # pylint: disable=assigning-non-slot
     sxng_request.render_time = 0  # pylint: disable=assigning-non-slot
     sxng_request.timings = []  # pylint: disable=assigning-non-slot
@@ -763,13 +764,13 @@ def search():
     # search_query.lang contains the user choice (all, auto, en, ...)
     # when the user choice is "auto", search.search_query.lang contains the detected language
     # otherwise it is equals to search_query.lang
-    
+
     # Identify all categories triggered by the engines in this query.
     # We prefer categories triggered by specific engine bangs (e.g. !gov -> videos).
     # If no specific engine was forced, we use the explicitly selected categories.
     explicit_categories = search_query.categories
     triggered_categories = []
-    
+
     # Check if any engine has a specific category that isn't 'general'
     for engineref in search_query.engineref_list:
         engine = engines.get(engineref.name)
