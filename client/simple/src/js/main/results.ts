@@ -99,27 +99,25 @@ listen("click", ".btn-collapse", function (this: HTMLElement) {
   this.innerHTML = this.innerHTML.replace(oldLabel, newLabel);
   this.classList.toggle("collapsed");
 
-  targetElement.classList.toggle("invisible");
-});
+  const isNowCollapsed = this.classList.contains("collapsed");
+  targetElement.classList.toggle("invisible", isNowCollapsed);
 
-listen("click", ".media-loader", function (this: HTMLElement) {
-  const target = this.getAttribute("data-target");
-  if (!target) return;
-
-  const iframeLoad = document.querySelector<HTMLIFrameElement>(`${target} > iframe`);
-  assertElement(iframeLoad);
-
-  // The btn-collapse listener (which also runs on this click) has already toggled the class.
-  // If the button now HAS the "collapsed" class, it means we are HIDING the media.
-  if (this.classList.contains("collapsed")) {
-    iframeLoad.setAttribute("src", "");
-  } else {
-    // If we are SHOWING the media, load from data-src if src is empty.
-    const currentSrc = iframeLoad.getAttribute("src");
-    if (!currentSrc || currentSrc === "") {
-      const dataSrc = iframeLoad.getAttribute("data-src");
-      if (dataSrc) {
-        iframeLoad.setAttribute("src", dataSrc);
+  // Kill switch / Lazy load logic for media-loader
+  if (this.classList.contains("media-loader")) {
+    const iframeLoad = targetElement.querySelector<HTMLIFrameElement>("iframe");
+    if (iframeLoad) {
+      if (isNowCollapsed) {
+        // Hiding: clear src to stop playback
+        iframeLoad.setAttribute("src", "");
+      } else {
+        // Showing: load from data-src if src is empty
+        const currentSrc = iframeLoad.getAttribute("src");
+        if (!currentSrc || currentSrc === "") {
+          const dataSrc = iframeLoad.getAttribute("data-src");
+          if (dataSrc) {
+            iframeLoad.setAttribute("src", dataSrc);
+          }
+        }
       }
     }
   }
