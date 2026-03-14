@@ -19,10 +19,10 @@
 <div id="result-media-{{ index }}" class="embedded-content invisible">
   {% if 'youtube.com' in result.iframe_src or 'youtu.be' in result.iframe_src or 'youtube-nocookie.com' in result.iframe_src -%}
     {# Apply modern policies only for YouTube as per Error 153 fix #}
-    <iframe data-src="{{result.iframe_src}}" src="{{result.iframe_src}}" frameborder="0" allowfullscreen allow="autoplay 'none'; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <iframe data-src="{{result.iframe_src}}" frameborder="0" allowfullscreen allow="autoplay 'none'; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe>
   {%- else -%}
     {# Standard embed for other providers to maintain compatibility #}
-    <iframe data-src="{{result.iframe_src}}" src="{{result.iframe_src}}" frameborder="0" allowfullscreen allow="autoplay 'none'; encrypted-media; picture-in-picture"></iframe>
+    <iframe data-src="{{result.iframe_src}}" frameborder="0" allowfullscreen allow="autoplay 'none'; encrypted-media; picture-in-picture"></iframe>
   {%- endif %}
 </div>
 {%- endif %}

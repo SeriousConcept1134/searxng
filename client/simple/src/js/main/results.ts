@@ -109,11 +109,18 @@ listen("click", ".media-loader", function (this: HTMLElement) {
   const iframeLoad = document.querySelector<HTMLIFrameElement>(`${target} > iframe`);
   assertElement(iframeLoad);
 
-  const srctest = iframeLoad.getAttribute("src");
-  if (!srctest) {
-    const dataSrc = iframeLoad.getAttribute("data-src");
-    if (dataSrc) {
-      iframeLoad.setAttribute("src", dataSrc);
+  // The btn-collapse listener (which also runs on this click) has already toggled the class.
+  // If the button now HAS the "collapsed" class, it means we are HIDING the media.
+  if (this.classList.contains("collapsed")) {
+    iframeLoad.setAttribute("src", "");
+  } else {
+    // If we are SHOWING the media, load from data-src if src is empty.
+    const currentSrc = iframeLoad.getAttribute("src");
+    if (!currentSrc || currentSrc === "") {
+      const dataSrc = iframeLoad.getAttribute("data-src");
+      if (dataSrc) {
+        iframeLoad.setAttribute("src", dataSrc);
+      }
     }
   }
 });
