@@ -912,10 +912,16 @@ def preferences():
 
     # save preferences
     if sxng_request.method == 'POST':
-        resp = make_response(redirect(url_for('index', _external=True)))
+        if sxng_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            resp = Response(status=204)
+        else:
+            resp = make_response(redirect(url_for('index', _external=True)))
+
         try:
             sxng_request.preferences.parse_form(sxng_request.form)
         except ValidationException:
+            if sxng_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return Response(status=400)
             sxng_request.errors.append(gettext('Invalid settings, please edit your preferences'))
             return resp
         return sxng_request.preferences.save(resp)

@@ -99,6 +99,7 @@ Clicking **Hide Video** now immediately resets the iframe `src` to an empty stri
 
 #### General UI/UX
 
+- **Dynamic preferences save**: added a visual confirmation message when saving settings. Instead of redirecting to the homepage, the "Save" button now triggers an asynchronous update and displays a "Settings saved" notification with a green checkmark that smoothly fades away.
 - **Category highlighting**: fixed a bug where categories (e.g., *Videos*) would not highlight when triggered via a bang shortcut (`!yt`, `!gov`, etc.). Resolved via `triggered_categories` logic that correctly infers the active category from the bang used.
 - **Pagination layout**: corrected grid-view pagination where *Previous* / *Next* buttons were pushed to the screen edges; they are now centered and correctly sequenced.
 - **YouTube "Error 153"**: resolved a common inline playback failure for embedded YouTube videos by applying the appropriate `allow` and `referrer` iframe policies.

@@ -3,7 +3,12 @@
   <br>{{- _("These cookies serve your sole convenience; we don't use them to track you.") -}}
 </p>{{- '' -}}
 
-<input type="submit" value="{{ _('Save') }}">{{- '' -}}
+<div class="preferences_save_container">
+  <input type="submit" value="{{ _('Save') }}">{{- '' -}}
+  <span id="save-confirmation" class="save-confirmation invisible">
+    {{ icon_small('checkmark-circle') }} {{ _('Settings saved') }}
+  </span>
+</div>
 
 <div class="{% if rtl %}left{% else %}right{% endif %} preferences_back">{{- '' -}}
   <a href="{{ url_for('clear_cookies') }}">{{ _('Reset defaults') }}</a>{{- '' -}}

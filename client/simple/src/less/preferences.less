@@ -222,6 +222,34 @@ table {
   #pref-hash-input {
     width: 100%;
   }
+
+  .preferences_save_container {
+    display: inline-block;
+    vertical-align: middle;
+
+    .save-confirmation {
+      margin-left: 1rem;
+      color: var(--color-success);
+      font-weight: bold;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: opacity 1s ease-in-out;
+      opacity: 1;
+
+      &.fade-out {
+        opacity: 0;
+      }
+
+      &.invisible {
+        display: none;
+      }
+
+      svg {
+        fill: var(--color-success);
+      }
+    }
+  }
 }
 
 @media screen and (max-width: @tablet) {
