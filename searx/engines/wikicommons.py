@@ -112,7 +112,7 @@ def request(query: str, params: "OnlineParams") -> None:
         "gsrsearch": f"filetype:{filetype} {query}",
         # imageinfo: https://commons.wikimedia.org/w/api.php?action=help&modules=query%2Bimageinfo
         "iiprop": "url|size|mime",
-        "iiurlheight": "180",  # needed for the thumb url
+        "iiurlwidth": "250",  # needed for the thumb url
     }
     params["url"] = f"{wc_api_url}?{urlencode(args, safe=':|')}"
 
@@ -135,7 +135,7 @@ def response(resp: "SXNG_Response") -> EngineResults:
         url: str = imageinfo["descriptionurl"]
         media_url: str = imageinfo["url"]
         mimetype: str = imageinfo["mime"]
-        thumbnail: str = imageinfo["thumburl"]
+        thumbnail: str = imageinfo.get("thumburl", "")
         size = imageinfo.get("size")
         if size:
             size = humanize_bytes(size)
@@ -188,6 +188,7 @@ def response(resp: "SXNG_Response") -> EngineResults:
                     content=content,
                     iframe_src=media_url,
                     length=duration,
+                    thumbnail=thumbnail,
                 )
             )
             continue
@@ -201,6 +202,7 @@ def response(resp: "SXNG_Response") -> EngineResults:
                     content=content,
                     audio_src=media_url,
                     length=duration,
+                    thumbnail=thumbnail,
                 )
             )
             continue

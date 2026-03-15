@@ -97,6 +97,11 @@ Clicking **Hide Video** now immediately resets the iframe `src` to an empty stri
 - **Duplicate results**: tightened result targeting using high-precision XPaths (`jsname="pKB8Bc"`, `WVV5ke`) and explicit filtering of top-level `MjjYud` wrappers.
 - **Thumbnail reliability**: enhanced `parse_data_images` to extract JSON-mapped image data from modern `google.ldi` and `google.pim` structures, with logic to prefer high-resolution images and exclude favicons and UI chrome.
 
+#### Wikicommons Engine
+
+- **Thumbnail restoration**: fixed an issue where video and audio results from Wikimedia Commons were missing thumbnails.
+- **Standardized widths (429 Fix)**: resolved broken image links by implementing standardized thumbnail widths (e.g., `250px`). Previously, non-standard height requests triggered `429 Too Many Requests` errors from Wikimedia's image servers.
+
 #### General UI/UX
 
 - **Dynamic preferences save**: added a visual confirmation message when saving settings. Instead of redirecting to the homepage, the "Save" button now triggers an asynchronous update and displays a "Settings saved" notification with a green checkmark that smoothly fades away.
