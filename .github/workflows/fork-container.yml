@@ -7,7 +7,10 @@ on:
       - dev
     paths-ignore:
       - 'README.md'
+      - 'GEMINI.md'
+      - 'start-searxng-dev.sh'
       - 'docs/**'
+      - '.github/workflows/fork-container.yml'
       - '.github/workflows/documentation.yml'
 
 concurrency:

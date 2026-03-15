@@ -134,6 +134,25 @@ templates_path = settings['ui']['templates_path']
 themes = get_themes(templates_path)
 result_templates = get_result_templates(templates_path)
 
+_cached_bangs: typing.Optional[typing.List[str]] = None
+
+
+def get_bangs_list():
+    global _cached_bangs  # pylint: disable=global-statement
+    if _cached_bangs is None:
+        # Collect all unique engine names, shortcuts, and categories
+        bangs = set()
+        bangs.update(engines.keys())
+        bangs.update(engine_shortcuts.keys())
+        for category in categories.keys():
+            bangs.add(category)
+            bangs.add(category.replace(' ', '_'))
+            bangs.add(category.replace(' ', '-'))
+        # Filter out empty or None values and sort
+        _cached_bangs = sorted(list(filter(None, bangs)))
+    return _cached_bangs
+
+
 STATS_SORT_PARAMETERS = {
     'name': (False, 'name', ''),
     'score': (True, 'score_per_result', 0),
@@ -383,6 +402,7 @@ def get_client_settings():
         'safesearch': req_pref.get_value('safesearch'),
         'theme': req_pref.get_value('theme'),
         'doi_resolver': get_doi_resolver(),
+        'bangs': get_bangs_list(),
     }
 
 

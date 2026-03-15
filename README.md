@@ -34,7 +34,8 @@ and targeted bug fixes — without compromising the core privacy guarantees.
 
 ### ✨ New UI/UX Features
 
-#### 🌓 Dynamic Theme Switcher
+<details>
+<summary><b>🌓 Dynamic Theme Switcher</b></summary>
 
 A toggle accessible from any page lets you switch between light and dark modes on the fly.
 
@@ -43,8 +44,10 @@ A toggle accessible from any page lets you switch between light and dark modes o
 - Persists your preference via `simple_style` and `preferred_dark_style` cookies.
 
 <video src="https://github.com/user-attachments/assets/fca6b5e4-edcd-471f-a02d-87a68987fafc" controls></video>
+</details>
 
-#### 🖼️ Video Search: Grid View & Dynamic Resizer
+<details>
+<summary><b>🖼️ Video Search Grid View & Dynamic Resizer</b></summary>
 
 Brings the image-search grid experience to video results.
 
@@ -53,8 +56,10 @@ Brings the image-search grid experience to video results.
 - **Cleaner layout**: consistent vertical spacing and a logical result order (URL → Engines → Thumbnail → Title → Content → Metadata), maintained via CSS variables (`--video-size`) and Flexbox `order` rules regardless of thumbnail size.
 
 <video src="https://github.com/user-attachments/assets/70e6e4f7-1282-41b2-8d2b-4f42edaa556c" controls></video>
+</details>
 
-#### 🎥 Results Per Page Menu (Video Search)
+<details>
+<summary><b>🎥 Video Search Results Per Page Selection</b></summary>
 
 Added a drop-down menu allowing you to set desired results per page in video search. Ability to set between 10 and up to 50 results per single page.
 
@@ -63,54 +68,82 @@ Added a drop-down menu allowing you to set desired results per page in video sea
 - Implemented via `multipaging.py` and a `pre_process_params` stage that translates user-facing page numbers into the correct native engine offsets (e.g., User Page 2 @ 30/page → Native Page 4 @ 10/page).
 
 <video src="https://github.com/user-attachments/assets/00c855b2-ff74-438a-b2df-059ed2429765" controls></video>
+</details>
+
+
+<details>
+<summary><b>🧹 Intelligent Bang Purging (Instant Category Switching)</b></summary>
+
+Improves the behavior of "bangs" (e.g., `!yt`, `!videos`) by allowing you to seamlessly switch to another search category for the same query without getting "locked in" by the bang (huge quality of life improvement).
+
+- **Seamless transitions**: previously, using a bang would "lock" the search to that specific engine or category. Switching to another category tab (like "General") would simply reload the same results because the bang remained in the search query.
+- **Context-aware stripping**: clicking a category tab now intelligently purges SearXNG bangs from the query while preserving the actual search terms.
+- **Smart identification**: only functional bangs defined in the SearXNG configuration are removed; legitimate search terms (like `!important`) are safely preserved regardless of their position in the query.
+- **Zero performance impact**: the list of valid bangs is cached on the server and injected into the client settings once per lifecycle.
+</details>
 
 ---
 
 ### 📺 Video Preview Improvements
 
-#### 🔇 Universal Autoplay Suppression
+<details>
+<summary><b>🔇 Universal Autoplay Suppression</b></summary>
 
 Strengthened protections against unwanted autoplay across all supported video engines (YouTube, Dailymotion, BitChute, and others).
 
 - Standardized `autoplay=0` URL parameters site-wide.
 - Applied modern iframe Permissions Policy (`autoplay 'none'`) as a secondary enforcement layer.
+</details>
 
-#### 🚀 Interaction-Based Lazy Loading
+<details>
+<summary><b>🚀 Interaction-Based Lazy Loading</b></summary>
 
 - Video previews (embeds) no longer load in the background. Iframes are initialized with an empty `src`; the actual URL is stored in a `data-src` attribute and only applied when you explicitly click **Show Video**.
 - This eliminates background tracking (improved privacy), reduces page load times, and eliminates video embeds from autoplaying while hidden (in edge cases where autoplay suppression alone was insufficient).
+</details>
 
-#### 🛑 Playback Kill Switch
+<details>
+<summary><b>🛑 Playback Kill Switch</b></summary>
 
 - Clicking **Hide Video** now immediately resets the iframe `src` to an empty string, forcing the browser to unload the external media player entirely. Previously, hidden videos could continue streaming or transferring data in the background.
+</details>
 
 ---
 
 ### 🛠️ Engine & UI Fixes
 
-#### Google Engines
+<details>
+<summary><b>Google Engines</b></summary>
 
 - **Google News**: modernized the Google News engine parsing logic to support the latest HTML structure. Resolved the issue where zero results were returned due to outdated XPaths. Additonally fixed an issue where thumbnails would't be desplayed by forcing SearXNG's image proxy for internal Google `/api/attachments/` links, bypassing browser security blocks which were preventing them from loading.
 - **Google Videos**: fixed an issue where Google Videos was not returning video descriptions at all. The extraction logic was modernized to support new `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, including a fallback to `aria-label` attributes for certain layout variants.
 - **Google (main engine)**: modernized snippet extraction to support `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, resolving malformed or missing descriptions in Google results. Also fixed thumbnail extraction by an enhanced `parse_data_images` to extract JSON-mapped image data from modern `google.ldi` and `google.pim` structures, with logic to prefer high-resolution images and exclude favicons and UI chrome.
 - **Duplicate results**: tightened result targeting using high-precision XPaths (`jsname="pKB8Bc"`, `WVV5ke`) and explicit filtering of top-level `MjjYud` wrappers.
+</details>
 
-#### YouTube Engine
+<details>
+<summary><b>YouTube Engine</b></summary>
 
 - **YouTube Videos**: restored missing video descriptions by modernizing the JSON parsing logic. The engine now correctly extracts snippets from the new `detailedMetadataSnippets` structure while maintaining backward compatibility with `descriptionSnippet`. Additionally improved result coverage by including videos from nested `shelfRenderer` sections (e.g., "People also watched").
 - **YouTube Embeds "Error 153"**: resolved a common inline playback failure for embedded YouTube videos by applying the appropriate `allow` and `referrer` iframe policies.
+</details>
 
-#### Wikicommons Engine
+
+<details>
+<summary><b>Wikicommons Engine</b></summary>
 
 - **Thumbnail restoration**: fixed an issue where video and audio results from Wikimedia Commons were missing thumbnails.
 - **Standardized widths (429 Fix)**: resolved broken image links by implementing standardized thumbnail widths (e.g., `250px`). Previously, non-standard height requests triggered `429 Too Many Requests` errors from Wikimedia's image servers.
+</details>
 
-#### General UI/UX
+<details>
+<summary><b>General UI/UX</b></summary>
 
 - **News thumbnail size**: increased the default thumbnail width for news results from `7rem` to `13rem` for better visibility and a more modern look.
 - **Dynamic preferences save**: added a visual confirmation message when saving settings. Instead of redirecting to the homepage, the "Save" button now triggers an asynchronous update and displays a "Settings saved" notification with a green checkmark that smoothly fades away.
 - **Category highlighting**: fixed a bug where categories (e.g., *Videos*) would not highlight when triggered via a bang shortcut (`!yt`, `!gov`, etc.). Resolved via `triggered_categories` logic that correctly infers the active category from the bang used.
 - **Pagination layout**: corrected grid-view pagination where *Previous* / *Next* buttons were pushed to the screen edges; they are now centered and correctly sequenced.
+</details>
 
 
 ## Setup

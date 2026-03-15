@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { listen } from "../toolkit.ts";
+import { listen, settings } from "../toolkit.ts";
 import { getElement } from "../util/getElement.ts";
 
 const searchForm: HTMLFormElement = getElement<HTMLFormElement>("search");
@@ -13,6 +13,29 @@ const isResultsPage: boolean = document.querySelector("main")?.id === "main_resu
 const categoryButtons: HTMLButtonElement[] = Array.from(
   document.querySelectorAll<HTMLButtonElement>("#categories_container button.category")
 );
+
+const validBangs: Set<string> = new Set((settings as any).bangs || []);
+
+const purgeBangs = (query: string): string => {
+  if (!query) return "";
+  return query
+    .split(/\s+/)
+    .filter((token) => {
+      // Always strip external bangs (starts with !!)
+      if (token.startsWith("!!")) return false;
+
+      // Strip internal bangs if they match a known engine/category
+      if (token.startsWith("!")) {
+        const bang = token.slice(1).toLowerCase();
+        // Normalize underscores/dashes to match backend variants
+        if (validBangs.has(bang) || validBangs.has(bang.replace(/[-_]/g, " "))) return false;
+      }
+
+      return true;
+    })
+    .join(" ")
+    .trim();
+};
 
 if (searchInput.value.length === 0) {
   searchReset.classList.add("empty");
@@ -47,6 +70,14 @@ listen("click", searchReset, (event: MouseEvent) => {
 });
 
 for (const button of categoryButtons) {
+  // Use mousedown to ensure the value is updated BEFORE the click/submit fires
+  listen("mousedown", button, (event: MouseEvent) => {
+    if (event.shiftKey) return;
+
+    // Purge bangs immediately on the input element
+    searchInput.value = purgeBangs(searchInput.value);
+  });
+
   listen("click", button, (event: MouseEvent) => {
     if (event.shiftKey) {
       event.preventDefault();
@@ -92,3 +123,4 @@ listen("submit", searchForm, (event: Event) => {
 
   searchForm.submit();
 });
+
