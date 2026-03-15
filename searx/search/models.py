@@ -40,9 +40,10 @@ class SearchQuery:
         'external_bang',
         'engine_data',
         'redirect_to_first_result',
-        # Added to support dynamic results-per-page for specific categories (e.g. videos)
+        # Added to support dynamic results-per-page for specific categories (e.g. videos, images)
         'results_per_page',
         'is_video_search',
+        'is_image_search',
     )
 
     def __init__(
@@ -59,6 +60,7 @@ class SearchQuery:
         redirect_to_first_result: bool | None = None,
         results_per_page: int | None = None,
         is_video_search: bool = False,
+        is_image_search: bool = False,
     ):  # pylint:disable=too-many-arguments
         self.query = query
         self.engineref_list = engineref_list
@@ -72,6 +74,7 @@ class SearchQuery:
         self.redirect_to_first_result = redirect_to_first_result
         self.results_per_page = results_per_page
         self.is_video_search = is_video_search
+        self.is_image_search = is_image_search
 
         self.locale = None
         if self.lang:
@@ -85,7 +88,7 @@ class SearchQuery:
         return list(set(map(lambda engineref: engineref.category, self.engineref_list)))
 
     def __repr__(self):
-        return "SearchQuery({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+        return "SearchQuery({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.query,
             self.engineref_list,
             self.lang,
@@ -97,6 +100,7 @@ class SearchQuery:
             self.redirect_to_first_result,
             self.results_per_page,
             self.is_video_search,
+            self.is_image_search,
         )
 
     def __eq__(self, other):
@@ -112,6 +116,7 @@ class SearchQuery:
             and self.redirect_to_first_result == other.redirect_to_first_result
             and self.results_per_page == other.results_per_page
             and self.is_video_search == other.is_video_search
+            and self.is_image_search == other.is_image_search
         )
 
     def __hash__(self):
@@ -128,6 +133,7 @@ class SearchQuery:
                 self.redirect_to_first_result,
                 self.results_per_page,
                 self.is_video_search,
+                self.is_image_search,
             )
         )
 
@@ -146,4 +152,5 @@ class SearchQuery:
             self.redirect_to_first_result,
             self.results_per_page,
             self.is_video_search,
+            self.is_image_search,
         )

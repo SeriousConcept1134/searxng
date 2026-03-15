@@ -403,6 +403,8 @@ def get_client_settings():
         'theme': req_pref.get_value('theme'),
         'doi_resolver': get_doi_resolver(),
         'bangs': get_bangs_list(),
+        'video_results_per_page': req_pref.get_value('video_results_per_page'),
+        'image_results_per_page': req_pref.get_value('image_results_per_page'),
     }
 
 
@@ -500,6 +502,10 @@ def pre_request():
             preferences.key_value_settings['simple_style'].parse(sxng_request.cookies['simple_style'])
         if 'results_per_page' in sxng_request.cookies:
             preferences.key_value_settings['results_per_page'].parse(sxng_request.cookies['results_per_page'])
+        if 'video_results_per_page' in sxng_request.cookies:
+            preferences.key_value_settings['video_results_per_page'].parse(sxng_request.cookies['video_results_per_page'])
+        if 'image_results_per_page' in sxng_request.cookies:
+            preferences.key_value_settings['image_results_per_page'].parse(sxng_request.cookies['image_results_per_page'])
 
     except Exception as e:  # pylint: disable=broad-except
         logger.exception(e, exc_info=True)
@@ -721,9 +727,9 @@ def search():
 
     results = result_container.get_ordered_results()
 
-    # Trim results based on user preference (currently enabled only for video searches)
+    # Trim results based on user preference (enabled for video and image searches)
     results_per_page = search_query.results_per_page
-    if search_query.is_video_search and results_per_page is not None:
+    if (search_query.is_video_search or search_query.is_image_search) and results_per_page is not None:
         results = results[:results_per_page]
 
     if search_query.redirect_to_first_result and results:
@@ -820,6 +826,7 @@ def search():
         number_of_results = format_decimal(result_container.number_of_results),
         results_per_page = results_per_page,
         is_video_search = search_query.is_video_search,
+        is_image_search = search_query.is_image_search,
         suggestions = suggestion_urls,
         answers = result_container.answers,
         corrections = correction_urls,

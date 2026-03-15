@@ -23,36 +23,47 @@
     }
 
     function init() {
-      var resultsPerPage = document.getElementById('results_per_page');
+      var videoResultsPerPage = document.getElementById('video_results_per_page');
+      var imageResultsPerPage = document.getElementById('image_results_per_page');
       var gridToggle = document.getElementById('video-grid-toggle');
       var gridSize = document.getElementById('video-grid-size');
       var body = document.body;
 
-      if (resultsPerPage) {
-        resultsPerPage.addEventListener('change', function() {
-          setCookie('results_per_page', this.value, 365);
-          var mainForm = document.getElementById('search') || document.querySelector('form.search_form');
+      var handleResultsPerPageChange = function(selectEl, cookieName) {
+        setCookie(cookieName, selectEl.value, 365);
+        var mainForm = document.getElementById('search') || document.querySelector('form.search_form');
+        
+        if (mainForm) {
+          // Ensure the selector's name/value is included in the submit
+          selectEl.setAttribute('name', 'results_per_page');
           
-          if (mainForm) {
-            // Ensure the selector's name/value is included in the submit
-            resultsPerPage.setAttribute('name', 'results_per_page');
-            
-            // Re-inject hidden inputs for all selected categories to avoid defaulting to 'general'
-            {% for category in selected_categories %}
-            var catInput = document.createElement('input');
-            catInput.type = 'hidden';
-            catInput.name = 'category_{{ category }}';
-            catInput.value = '1';
-            mainForm.appendChild(catInput);
-            {% endfor %}
+          // Re-inject hidden inputs for all selected categories to avoid defaulting to 'general'
+          {% for category in selected_categories %}
+          var catInput = document.createElement('input');
+          catInput.type = 'hidden';
+          catInput.name = 'category_{{ category }}';
+          catInput.value = '1';
+          mainForm.appendChild(catInput);
+          {% endfor %}
 
-            mainForm.submit();
-          } else {
-            // Fallback if form is missing
-            var url = new URL(window.location.href);
-            url.searchParams.set('results_per_page', this.value);
-            window.location.href = url.toString();
-          }
+          mainForm.submit();
+        } else {
+          // Fallback if form is missing
+          var url = new URL(window.location.href);
+          url.searchParams.set('results_per_page', selectEl.value);
+          window.location.href = url.toString();
+        }
+      };
+
+      if (videoResultsPerPage) {
+        videoResultsPerPage.addEventListener('change', function() {
+          handleResultsPerPageChange(this, 'video_results_per_page');
+        });
+      }
+
+      if (imageResultsPerPage) {
+        imageResultsPerPage.addEventListener('change', function() {
+          handleResultsPerPageChange(this, 'image_results_per_page');
         });
       }
 

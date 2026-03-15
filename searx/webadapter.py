@@ -219,32 +219,45 @@ def parse_engine_data(form):
     return engine_data
 
 
-def parse_video_results_per_page(preferences, raw_text_query, query_engineref_list):
-    """Determine if current search is video-only and fetch the results-per-page preference."""
+def parse_results_per_page(preferences, raw_text_query, query_engineref_list):
+    """Determine if current search is video-only or image-only and fetch the relevant results-per-page preference."""
     is_video_search = False
-    if query_engineref_list:
-        all_videos = True
-        for engineref in query_engineref_list:
-            engine = engines.get(engineref.name)
-            # If all selected engines belong to 'videos', we treat it as a video search
-            if not engine or 'videos' not in getattr(engine, 'categories', []):
-                all_videos = False
-                break
-        if all_videos:
-            is_video_search = True
+    is_image_search = False
 
-    # Categorical bang overrides (e.g. !videos, !gov, !yt) also trigger video search mode
-    if not is_video_search and any(ref.category == 'videos' for ref in raw_text_query.enginerefs):
-        is_video_search = True
+    def detect_category(category_name):
+        is_category = False
+        if query_engineref_list:
+            all_category = True
+            for engineref in query_engineref_list:
+                engine = engines.get(engineref.name)
+                if not engine or category_name not in getattr(engine, 'categories', []):
+                    all_category = False
+                    break
+            if all_category:
+                is_category = True
+        # Categorical bang overrides (e.g. !videos, !images) also trigger search mode
+        if not is_category and any(ref.category == category_name for ref in raw_text_query.enginerefs):
+            is_category = True
+        return is_category
+
+    is_video_search = detect_category('videos')
+    is_image_search = detect_category('images')
 
     results_per_page = None
     if is_video_search:
-        results_per_page = preferences.key_value_settings['results_per_page'].get_value()
+        results_per_page = preferences.key_value_settings['video_results_per_page'].get_value()
+        # Fallback to legacy results_per_page if video-specific is not set
+        if not results_per_page:
+            results_per_page = preferences.key_value_settings['results_per_page'].get_value()
         # Ensure we have a default from settings if preference is missing
         if not results_per_page:
-            results_per_page = settings['search']['results_per_page']
+            results_per_page = settings['search']['video_results_per_page']
+    elif is_image_search:
+        results_per_page = preferences.key_value_settings['image_results_per_page'].get_value()
+        if not results_per_page:
+            results_per_page = settings['search']['image_results_per_page']
 
-    return is_video_search, results_per_page
+    return is_video_search, is_image_search, results_per_page
 
 
 def get_search_query_from_webapp(
@@ -309,7 +322,9 @@ def get_search_query_from_webapp(
         query_engineref_list, preferences
     )
 
-    is_video_search, results_per_page = parse_video_results_per_page(preferences, raw_text_query, query_engineref_list)
+    is_video_search, is_image_search, results_per_page = parse_results_per_page(
+        preferences, raw_text_query, query_engineref_list
+    )
 
     return (
         SearchQuery(
@@ -325,6 +340,7 @@ def get_search_query_from_webapp(
             redirect_to_first_result=redirect_to_first_result,
             results_per_page=results_per_page,
             is_video_search=is_video_search,
+            is_image_search=is_image_search,
         ),
         raw_text_query,
         query_engineref_list_unknown,

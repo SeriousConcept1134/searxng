@@ -1,4 +1,5 @@
-{% set grid_size = request.cookies.get('video_grid_size', '300') %}
+{% set video_results_per_page = results_per_page %}
+{% set image_results_per_page = results_per_page %}
 <form id="search" method="{{ method or 'POST' }}" action="{{ url_for('search') }}" role="search">
   <div id="search_header">
     <a id="search_logo" href="{{ url_for('index') }}" tabindex="0" title="{{ _('Display the front page') }}">
@@ -20,13 +21,22 @@
     {% include 'simple/filters/languages.html' %}
     {% include 'simple/filters/time_range.html' %}
     {% include 'simple/filters/safesearch.html' %}
-    {# Dropdown for results-per-page (currently enabled for video searches) #}
-    <select {% if is_video_search %}name="results_per_page"{% endif %} id="results_per_page" class="results_per_page" aria-label="{{ _('Results per page') }}" {% if not is_video_search %}style="display: none;"{% endif %}>
-      <option value="10" {% if results_per_page == 10 %}selected="selected"{% endif %}>10 {{ _('results per page') }}</option>
-      <option value="20" {% if results_per_page == 20 %}selected="selected"{% endif %}>20 {{ _('results per page') }}</option>
-      <option value="30" {% if results_per_page == 30 %}selected="selected"{% endif %}>30 {{ _('results per page') }}</option>
-      <option value="40" {% if results_per_page == 40 %}selected="selected"{% endif %}>40 {{ _('results per page') }}</option>
-      <option value="50" {% if results_per_page == 50 %}selected="selected"{% endif %}>50 {{ _('results per page') }}</option>
+    {# Dropdowns for results-per-page (enabled for video and image searches) #}
+    <select {% if is_video_search %}name="results_per_page"{% endif %} id="video_results_per_page" class="results_per_page" aria-label="{{ _('Video results per page') }}" {% if not is_video_search %}style="display: none;"{% endif %}>
+      <option value="10" {% if is_video_search and results_per_page == 10 %}selected="selected"{% endif %}>10 {{ _('results per page') }}</option>
+      <option value="20" {% if is_video_search and results_per_page == 20 %}selected="selected"{% endif %}>20 {{ _('results per page') }}</option>
+      <option value="30" {% if is_video_search and results_per_page == 30 %}selected="selected"{% endif %}>30 {{ _('results per page') }}</option>
+      <option value="40" {% if is_video_search and results_per_page == 40 %}selected="selected"{% endif %}>40 {{ _('results per page') }}</option>
+      <option value="50" {% if is_video_search and results_per_page == 50 %}selected="selected"{% endif %}>50 {{ _('results per page') }}</option>
+    </select>
+
+    <select {% if is_image_search %}name="results_per_page"{% endif %} id="image_results_per_page" class="results_per_page" aria-label="{{ _('Image results per page') }}" {% if not is_image_search %}style="display: none;"{% endif %}>
+      <option value="25" {% if is_image_search and results_per_page == 25 %}selected="selected"{% endif %}>25 {{ _('results per page') }}</option>
+      <option value="50" {% if is_image_search and results_per_page == 50 %}selected="selected"{% endif %}>50 {{ _('results per page') }}</option>
+      <option value="75" {% if is_image_search and results_per_page == 75 %}selected="selected"{% endif %}>75 {{ _('results per page') }}</option>
+      <option value="100" {% if is_image_search and results_per_page == 100 %}selected="selected"{% endif %}>100 {{ _('results per page') }}</option>
+      <option value="150" {% if is_image_search and results_per_page == 150 %}selected="selected"{% endif %}>150 {{ _('results per page') }}</option>
+      <option value="200" {% if is_image_search and results_per_page == 200 %}selected="selected"{% endif %}>200 {{ _('results per page') }}</option>
     </select>
 
     {% if is_video_search %}
@@ -46,18 +56,26 @@
     <script>
       (function() {
         var form = document.getElementById('search');
-        var select = document.getElementById('results_per_page');
-        if (!form || !select) return;
+        var videoSelect = document.getElementById('video_results_per_page');
+        var imageSelect = document.getElementById('image_results_per_page');
+        if (!form) return;
 
         /**
          * Ensures that the results_per_page parameter is only submitted when 
-         * the 'videos' category is active.
+         * a relevant category is active.
          */
         form.addEventListener('submit', function(e) {
           var submitter = e.submitter || document.activeElement;
           if (submitter && submitter.name && submitter.name.indexOf('category_') === 0) {
-            if (submitter.name !== 'category_videos') {
-              select.removeAttribute('name');
+            if (submitter.name === 'category_videos') {
+               videoSelect.setAttribute('name', 'results_per_page');
+               imageSelect.removeAttribute('name');
+            } else if (submitter.name === 'category_images') {
+               imageSelect.setAttribute('name', 'results_per_page');
+               videoSelect.removeAttribute('name');
+            } else {
+               videoSelect.removeAttribute('name');
+               imageSelect.removeAttribute('name');
             }
           }
         });
@@ -65,8 +83,17 @@
         // Handle category clicks for older browsers
         form.addEventListener('click', function(e) {
           var target = e.target.closest('button.category');
-          if (target && target.name !== 'category_videos') {
-            select.removeAttribute('name');
+          if (target) {
+            if (target.name === 'category_videos') {
+               videoSelect.setAttribute('name', 'results_per_page');
+               imageSelect.removeAttribute('name');
+            } else if (target.name === 'category_images') {
+               imageSelect.setAttribute('name', 'results_per_page');
+               videoSelect.removeAttribute('name');
+            } else {
+               videoSelect.removeAttribute('name');
+               imageSelect.removeAttribute('name');
+            }
           }
         });
       })();

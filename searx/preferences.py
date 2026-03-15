@@ -450,16 +450,44 @@ class Preferences:
                 locked=is_locked('theme'),
                 choices=themes
             ),
-            # Persistent selector for results-per-page (currently enabled for video search)
+            # Persistent selectors for results-per-page (enabled for video and image search)
             'results_per_page': MapSetting(
                 settings['search']['results_per_page'],
                 locked=is_locked('results_per_page'),
                 map={
                     '10': 10,
                     '20': 20,
+                    '25': 25,
+                    '30': 30,
+                    '40': 40,
+                    '50': 50,
+                    '75': 75,
+                    '100': 100,
+                    '150': 150,
+                    '200': 200
+                }
+            ),
+            'video_results_per_page': MapSetting(
+                settings['search']['video_results_per_page'],
+                locked=is_locked('video_results_per_page'),
+                map={
+                    '10': 10,
+                    '20': 20,
                     '30': 30,
                     '40': 40,
                     '50': 50
+                }
+            ),
+            'image_results_per_page': MapSetting(
+                settings['search']['image_results_per_page'],
+                locked=is_locked('image_results_per_page'),
+                map={
+                    '25': 25,
+                    '50': 50,
+                    '75': 75,
+                    '100': 100,
+                    '150': 150,
+                    '200': 200
                 }
             ),
             'results_on_new_tab': BooleanSetting(

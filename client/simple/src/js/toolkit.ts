@@ -20,6 +20,8 @@ type Settings = {
   theme_static_path?: string;
   translations?: Record<string, string>;
   url_formatting?: "pretty" | "full" | "host";
+  video_results_per_page?: number;
+  image_results_per_page?: number;
 };
 
 type HTTPOptions = {
