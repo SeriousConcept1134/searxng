@@ -62,47 +62,56 @@ def response(resp):
     return parse_first_page_response(resp.text)
 
 
+def parse_video_renderer(video):
+    videoid = video.get('videoId')
+    if videoid is None:
+        return None
+
+    url = base_youtube_url + videoid
+    thumbnail = 'https://i.ytimg.com/vi/' + videoid + '/hqdefault.jpg'
+    title = get_text_from_json(video.get('title', {}))
+
+    # Try different description sources
+    content = get_text_from_json(video.get('descriptionSnippet', {}))
+    if not content and 'detailedMetadataSnippets' in video:
+        content = get_text_from_json(video['detailedMetadataSnippets'][0].get('snippetText', {}))
+
+    author = get_text_from_json(video.get('ownerText', {}))
+    length = get_text_from_json(video.get('lengthText', {}))
+
+    return {
+        'url': url,
+        'title': title,
+        'content': content,
+        'author': author,
+        'length': length,
+        'template': 'videos.html',
+        'iframe_src': 'https://www.youtube-nocookie.com/embed/' + videoid + '?autoplay=0',
+        'thumbnail': thumbnail,
+    }
+
+
 def parse_next_page_response(response_text):
     results = []
     result_json = loads(response_text)
-    for section in (
-        result_json['onResponseReceivedCommands'][0]
-        .get('appendContinuationItemsAction')['continuationItems'][0]
-        .get('itemSectionRenderer')['contents']
+    for continuation_item in result_json['onResponseReceivedCommands'][0].get('appendContinuationItemsAction', {}).get(
+        'continuationItems', []
     ):
-        if 'videoRenderer' not in section:
-            continue
-        section = section['videoRenderer']
-        content = "-"
-        if 'descriptionSnippet' in section:
-            content = ' '.join(x['text'] for x in section['descriptionSnippet']['runs'])
-        results.append(
-            {
-                'url': base_youtube_url + section['videoId'],
-                'title': ' '.join(x['text'] for x in section['title']['runs']),
-                'content': content,
-                'author': section['ownerText']['runs'][0]['text'],
-                'length': section['lengthText']['simpleText'],
-                'template': 'videos.html',
-                'iframe_src': 'https://www.youtube-nocookie.com/embed/' + section['videoId'] + '?autoplay=0',
-                'thumbnail': section['thumbnail']['thumbnails'][-1]['url'],
-            }
-        )
-    try:
-        token = (
-            result_json['onResponseReceivedCommands'][0]
-            .get('appendContinuationItemsAction')['continuationItems'][1]
-            .get('continuationItemRenderer')['continuationEndpoint']
-            .get('continuationCommand')['token']
-        )
-        results.append(
-            {
-                "engine_data": token,
-                "key": "next_page_token",
-            }
-        )
-    except:  # pylint: disable=bare-except
-        pass
+        if 'itemSectionRenderer' in continuation_item:
+            for item in continuation_item['itemSectionRenderer'].get('contents', []):
+                if 'videoRenderer' in item:
+                    res = parse_video_renderer(item['videoRenderer'])
+                    if res:
+                        results.append(res)
+        elif 'continuationItemRenderer' in continuation_item:
+            token = (
+                continuation_item['continuationItemRenderer']
+                .get('continuationEndpoint', {})
+                .get('continuationCommand', {})
+                .get('token')
+            )
+            if token:
+                results.append({"engine_data": token, "key": "next_page_token"})
 
     return results
 
@@ -136,31 +145,19 @@ def parse_first_page_response(response_text):
                     }
                 )
         for video_container in section.get('itemSectionRenderer', {}).get('contents', []):
-            video = video_container.get('videoRenderer', {})
-            videoid = video.get('videoId')
-            if videoid is not None:
-                url = base_youtube_url + videoid
-                thumbnail = 'https://i.ytimg.com/vi/' + videoid + '/hqdefault.jpg'
-                title = get_text_from_json(video.get('title', {}))
-                content = get_text_from_json(video.get('descriptionSnippet', {}))
-                author = get_text_from_json(video.get('ownerText', {}))
-                length = get_text_from_json(video.get('lengthText', {}))
+            if 'videoRenderer' in video_container:
+                res = parse_video_renderer(video_container['videoRenderer'])
+                if res:
+                    results.append(res)
+            elif 'shelfRenderer' in video_container:
+                for shelf_item in (
+                    video_container['shelfRenderer'].get('content', {}).get('verticalListRenderer', {}).get('contents', [])
+                ):
+                    if 'videoRenderer' in shelf_item:
+                        res = parse_video_renderer(shelf_item['videoRenderer'])
+                        if res:
+                            results.append(res)
 
-                # append result
-                results.append(
-                    {
-                        'url': url,
-                        'title': title,
-                        'content': content,
-                        'author': author,
-                        'length': length,
-                        'template': 'videos.html',
-                        'iframe_src': 'https://www.youtube-nocookie.com/embed/' + videoid + '?autoplay=0',
-                        'thumbnail': thumbnail,
-                    }
-                )
-
-    # return results
     return results
 
 

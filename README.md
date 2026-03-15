@@ -95,6 +95,11 @@ Strengthened protections against unwanted autoplay across all supported video en
 - **Google (main engine)**: modernized snippet extraction to support `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, resolving malformed or missing descriptions in Google results. Also fixed thumbnail extraction by an enhanced `parse_data_images` to extract JSON-mapped image data from modern `google.ldi` and `google.pim` structures, with logic to prefer high-resolution images and exclude favicons and UI chrome.
 - **Duplicate results**: tightened result targeting using high-precision XPaths (`jsname="pKB8Bc"`, `WVV5ke`) and explicit filtering of top-level `MjjYud` wrappers.
 
+#### YouTube Engine
+
+- **YouTube Videos**: restored missing video descriptions by modernizing the JSON parsing logic. The engine now correctly extracts snippets from the new `detailedMetadataSnippets` structure while maintaining backward compatibility with `descriptionSnippet`. Additionally improved result coverage by including videos from nested `shelfRenderer` sections (e.g., "People also watched").
+- **YouTube Embeds "Error 153"**: resolved a common inline playback failure for embedded YouTube videos by applying the appropriate `allow` and `referrer` iframe policies.
+
 #### Wikicommons Engine
 
 - **Thumbnail restoration**: fixed an issue where video and audio results from Wikimedia Commons were missing thumbnails.
@@ -106,7 +111,6 @@ Strengthened protections against unwanted autoplay across all supported video en
 - **Dynamic preferences save**: added a visual confirmation message when saving settings. Instead of redirecting to the homepage, the "Save" button now triggers an asynchronous update and displays a "Settings saved" notification with a green checkmark that smoothly fades away.
 - **Category highlighting**: fixed a bug where categories (e.g., *Videos*) would not highlight when triggered via a bang shortcut (`!yt`, `!gov`, etc.). Resolved via `triggered_categories` logic that correctly infers the active category from the bang used.
 - **Pagination layout**: corrected grid-view pagination where *Previous* / *Next* buttons were pushed to the screen edges; they are now centered and correctly sequenced.
-- **YouTube "Error 153"**: resolved a common inline playback failure for embedded YouTube videos by applying the appropriate `allow` and `referrer` iframe policies.
 
 
 ## Setup
