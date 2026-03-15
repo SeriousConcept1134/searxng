@@ -92,6 +92,8 @@ Clicking **Hide Video** now immediately resets the iframe `src` to an empty stri
 
 #### Google Engine
 
+- **Google News (Zero Results Fix)**: modernized the Google News engine parsing logic to support the latest HTML structure. Resolved the issue where zero results were returned due to outdated XPaths.
+- **Google News (Thumbnail Optimization)**: implemented an agnostic thumbnail solution that forces SearXNG's image proxy for internal Google `/api/attachments/` links, bypassing browser security blocks while maintaining high quality and efficient bandwidth usage.
 - **Google Videos description parsing**: fixed the issue where Google Videos was returning malformed or missing snippets. The extraction logic was modernized to support new `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, including a fallback to `aria-label` attributes for certain layout variants.
 - **Description parsing (general)**: modernized snippet extraction to support `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, resolving malformed or missing descriptions in Google results.
 - **Duplicate results**: tightened result targeting using high-precision XPaths (`jsname="pKB8Bc"`, `WVV5ke`) and explicit filtering of top-level `MjjYud` wrappers.
