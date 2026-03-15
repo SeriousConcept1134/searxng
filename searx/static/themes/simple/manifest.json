@@ -47,17 +47,16 @@
     ]
   },
   "src/js/main/preferences.ts": {
-    "file": "chunk/rc5vO3RV.min.js",
+    "file": "chunk/DPukiOA4.min.js",
     "name": "preferences",
     "src": "src/js/main/preferences.ts",
     "isDynamicEntry": true,
     "imports": [
-      "src/js/index.ts",
-      "_13gvpunf.min.js"
+      "src/js/index.ts"
     ]
   },
   "src/js/main/results.ts": {
-    "file": "chunk/BxEfB7yV.min.js",
+    "file": "chunk/DZ3uPfiM.min.js",
     "name": "results",
     "src": "src/js/main/results.ts",
     "isDynamicEntry": true,
