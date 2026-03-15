@@ -23,8 +23,6 @@ While SearXNG is an excellent privacy-focused meta-search engine, its stock UI c
 This fork builds on that solid foundation with a modernized interface, quality-of-life improvements,
 and targeted bug fixes — without compromising the core privacy guarantees.
 
-It was originally intended for personal use, but I made it public for anyone who may find it useful.
-
 **Goals:**
 
 - Stay current with upstream `master` at all times
@@ -58,11 +56,11 @@ Brings the image-search grid experience to video results.
 
 #### 🎥 Results Per Page Menu (Video Search)
 
-Set the number of video results shown per page: from 10 up to 50.
+Added a drop-down menu allowing you to set desired results per page in video search. Ability to set between 10 and up to 50 results per single page.
 
-Under the hood, a transparent "stitching" mechanism fetches and merges multiple pages if using a single engine which has fixed pagination limits. For example, Google Videos is capped at 10 results per page. Requesting 30 results with `!gov <query>` would normally yield only 10; the stitching layer calls the engine multiple times with offset pages and merges the results seamlessly before presenting them to you.
+- Under the hood, a transparent "stitching" mechanism fetches and merges multiple pages if using a single engine which has fixed pagination limits. For example, Google Videos is capped at 10 results per page. Requesting 30 results with `!gov <query>` would normally yield only 10; the stitching layer calls the engine multiple times with offset pages and merges the results seamlessly before presenting them to you.
 
-Implemented via `multipaging.py` and a `pre_process_params` stage that translates user-facing page numbers into the correct native engine offsets (e.g., User Page 2 @ 30/page → Native Page 4 @ 10/page).
+- Implemented via `multipaging.py` and a `pre_process_params` stage that translates user-facing page numbers into the correct native engine offsets (e.g., User Page 2 @ 30/page → Native Page 4 @ 10/page).
 
 <video src="https://github.com/user-attachments/assets/00c855b2-ff74-438a-b2df-059ed2429765" controls></video>
 
@@ -79,24 +77,23 @@ Strengthened protections against unwanted autoplay across all supported video en
 
 #### 🚀 Interaction-Based Lazy Loading
 
-Video previews no longer load in the background. Iframes are initialized with an empty `src`; the actual URL is stored in a `data-src` attribute and only applied when you explicitly click **Show Video**. This eliminates background tracking, reduces page load times, and closes the gap where autoplay suppression alone was insufficient.
+- Video previews (embeds) no longer load in the background. Iframes are initialized with an empty `src`; the actual URL is stored in a `data-src` attribute and only applied when you explicitly click **Show Video**.
+- This eliminates background tracking (improved privacy), reduces page load times, and eliminates video embeds from autoplaying while hidden (in edge cases where autoplay suppression alone was insufficient).
 
 #### 🛑 Playback Kill Switch
 
-Clicking **Hide Video** now immediately resets the iframe `src` to an empty string, forcing the browser to unload the external media player entirely. Previously, hidden videos could continue streaming or transferring data in the background.
+- Clicking **Hide Video** now immediately resets the iframe `src` to an empty string, forcing the browser to unload the external media player entirely. Previously, hidden videos could continue streaming or transferring data in the background.
 
 ---
 
 ### 🛠️ Engine & UI Fixes
 
-#### Google Engine
+#### Google Engines
 
-- **Google News (Zero Results Fix)**: modernized the Google News engine parsing logic to support the latest HTML structure. Resolved the issue where zero results were returned due to outdated XPaths.
-- **Google News (Thumbnail Optimization)**: implemented an agnostic thumbnail solution that forces SearXNG's image proxy for internal Google `/api/attachments/` links, bypassing browser security blocks while maintaining high quality and efficient bandwidth usage.
-- **Google Videos description parsing**: fixed the issue where Google Videos was returning malformed or missing snippets. The extraction logic was modernized to support new `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, including a fallback to `aria-label` attributes for certain layout variants.
-- **Description parsing (general)**: modernized snippet extraction to support `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, resolving malformed or missing descriptions in Google results.
+- **Google News**: modernized the Google News engine parsing logic to support the latest HTML structure. Resolved the issue where zero results were returned due to outdated XPaths. Additonally fixed an issue where thumbnails would't be desplayed by forcing SearXNG's image proxy for internal Google `/api/attachments/` links, bypassing browser security blocks which were preventing them from loading.
+- **Google Videos**: fixed an issue where Google Videos was not returning video descriptions at all. The extraction logic was modernized to support new `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, including a fallback to `aria-label` attributes for certain layout variants.
+- **Google (main engine)**: modernized snippet extraction to support `ITZIwc`, `p4wth`, `fzUZNc`, and `data-sncf` containers, resolving malformed or missing descriptions in Google results. Also fixed thumbnail extraction by an enhanced `parse_data_images` to extract JSON-mapped image data from modern `google.ldi` and `google.pim` structures, with logic to prefer high-resolution images and exclude favicons and UI chrome.
 - **Duplicate results**: tightened result targeting using high-precision XPaths (`jsname="pKB8Bc"`, `WVV5ke`) and explicit filtering of top-level `MjjYud` wrappers.
-- **Thumbnail reliability**: enhanced `parse_data_images` to extract JSON-mapped image data from modern `google.ldi` and `google.pim` structures, with logic to prefer high-resolution images and exclude favicons and UI chrome.
 
 #### Wikicommons Engine
 
@@ -113,6 +110,27 @@ Clicking **Hide Video** now immediately resets the iframe `src` to an empty stri
 
 
 ## Setup
+
+Recommended and fastest way is using Docker (or Podman):
+
+- Via Docker `run`:
+```
+docker run --name searxng-enhanced -d \
+  -p 8080:8080 \
+  -v searxng-config:/etc/searxng \
+  -v searxng-data:/var/cache/searxng \
+  ghcr.io/seriousconcept1134/searxng-enhanced:latest
+```
+
+- Via Docker `compose` (in your `docker-compose.yaml` configuration) set `image` to:
+```
+services:
+  searxng:
+    image: ghcr.io/seriousconcept1134/searxng-enhanced:latest
+  ...
+```
+
+Official Documentation:
 
 To install SearXNG, follow the [Installation guide](https://docs.searxng.org/admin/installation.html).
 

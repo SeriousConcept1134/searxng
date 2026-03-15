@@ -24,6 +24,9 @@ The google news API ignores some parameters from the common :ref:`google API`:
 .. _save: https://developers.google.com/custom-search/docs/xml_results#safesp
 """
 
+import re
+import json
+import base64
 from urllib.parse import urlencode
 from lxml import html
 import babel
@@ -136,11 +139,33 @@ def response(resp):
     for result in eval_xpath_list(dom, '//div[contains(@class, "IFHyqb")]'):
 
         # The link to the article is in a tag with class "JtKRv"
-        # The href attribute is a google internal link (./read/...)
-        href = eval_xpath_getindex(result, './/a[contains(@class, "JtKRv")]/@href', 0)
+        # However, the real URL is often encoded in the "jslog" attribute of a sibling tag with class "WwrzSb"
+        href = eval_xpath_getindex(result, './/a[contains(@class, "JtKRv")]/@href', 0, default=None)
+        if not href:
+            continue
+
         url = href
         if href.startswith('./'):
             url = 'https://news.google.com' + href[1:]
+
+        # Try to extract the real URL from jslog
+        jslog = eval_xpath_getindex(result, './/a[contains(@class, "WwrzSb")]/@jslog', 0, default=None)
+        if jslog:
+            try:
+                # jslog format is usually: "95014; 5:<base64>; track:click,vis"
+                # We want the second part (index 1) after splitting by ";"
+                parts = jslog.split(';')
+                if len(parts) > 1:
+                    b64_data = parts[1].split(':')[-1].strip()
+                    # Pad base64 if necessary
+                    b64_data += '=' * (-len(b64_data) % 4)
+                    decoded_data = json.loads(base64.b64decode(b64_data).decode('utf-8'))
+                    # The URL is typically the last element in the decoded array
+                    if isinstance(decoded_data, list) and len(decoded_data) > 0 and isinstance(decoded_data[-1], str):
+                        if decoded_data[-1].startswith('http'):
+                            url = decoded_data[-1]
+            except Exception:  # pylint: disable=broad-except
+                pass
 
         title = extract_text(eval_xpath(result, './/a[contains(@class, "JtKRv")]'))
 
@@ -152,10 +177,10 @@ def response(resp):
         content = ' / '.join([x for x in [pub_origin, pub_date] if x])
 
         # The image URL is often in an <img> tag with class "Quavad"
-        thumbnail = eval_xpath_getindex(result, './/img[contains(@class, "Quavad")]/@src', 0)
+        thumbnail = eval_xpath_getindex(result, './/img[contains(@class, "Quavad")]/@src', 0, default=None)
         if not thumbnail:
             # Fallback to any image that isn't a favicon
-            thumbnail = eval_xpath_getindex(result, './/img[not(contains(@src, "favicon"))]/@src', 0)
+            thumbnail = eval_xpath_getindex(result, './/img[not(contains(@src, "favicon"))]/@src', 0, default=None)
 
         if thumbnail and thumbnail.startswith('/'):
             thumbnail = 'https://news.google.com' + thumbnail
