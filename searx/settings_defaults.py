@@ -208,6 +208,10 @@ SCHEMA: dict[str, t.Any] = {
         'max_page': SettingsValue(int, 0),
         # Default results count for categories supporting dynamic pagination
         'results_per_page': SettingsValue(int, 10),
+        'video_results_per_page': SettingsValue(int, 10),
+        'image_results_per_page': SettingsValue(int, 50),
+        'video_grid_size': SettingsValue(int, 300),
+        'image_grid_size': SettingsValue(int, 192),
     },
     'server': {
         'port': SettingsValue((int, str), 8888, 'SEARXNG_PORT'),

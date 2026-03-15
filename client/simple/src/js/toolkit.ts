@@ -22,6 +22,8 @@ type Settings = {
   url_formatting?: "pretty" | "full" | "host";
   video_results_per_page?: number;
   image_results_per_page?: number;
+  video_grid_size?: number;
+  image_grid_size?: number;
 };
 
 type HTTPOptions = {

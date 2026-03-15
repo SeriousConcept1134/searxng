@@ -499,7 +499,7 @@ article[data-vim-selected].category-social {
   padding: 0.5rem 0.5rem 3rem 0.5rem;
   margin: 0.25rem;
   border: none !important;
-  height: @results-image-row-height;
+  height: var(--image-size, @results-image-row-height);
   width: unset;
 
   & > a {
@@ -1222,14 +1222,16 @@ pre code {
 @import "result_types/paper.less";
 @import "result_types/file.less";
 
-/* Video Grid View Configuration */
+/* Video & Image Grid View Configuration */
 
-#video-view-config {
+#video-view-config,
+#image-view-config {
   display: inline-flex;
   align-items: center;
 }
 
-#video-view-config .filter-item {
+#video-view-config .filter-item,
+#image-view-config .filter-item {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;

@@ -405,6 +405,8 @@ def get_client_settings():
         'bangs': get_bangs_list(),
         'video_results_per_page': req_pref.get_value('video_results_per_page'),
         'image_results_per_page': req_pref.get_value('image_results_per_page'),
+        'video_grid_size': int(sxng_request.cookies.get('video_grid_size', 300)),
+        'image_grid_size': int(sxng_request.cookies.get('image_grid_size', 192)),
     }
 
 

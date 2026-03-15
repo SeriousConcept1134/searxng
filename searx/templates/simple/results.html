@@ -75,19 +75,29 @@
         });
       }
 
-      if (gridSize) {
+      var videoGridSize = document.getElementById('video-grid-size');
+      var imageGridSize = document.getElementById('image-grid-size');
+
+      var handleGridSizeChange = function(selectEl, cookieName, cssVar) {
         var updateSize = function(val) {
-          // Set CSS variable used by the grid styles for dynamic resizing
-          document.documentElement.style.setProperty('--video-size', val + 'px');
-          setCookie('video_grid_size', val, 365);
+          document.documentElement.style.setProperty(cssVar, val + 'px');
+          setCookie(cookieName, val, 365);
         };
-        
-        gridSize.addEventListener('input', function() {
+
+        selectEl.addEventListener('input', function() {
           updateSize(this.value);
         });
 
-        // Initialize size from the current slider value (loaded from cookie in template)
-        updateSize(gridSize.value);
+        // Initialize size from the current slider value
+        updateSize(selectEl.value);
+      };
+
+      if (videoGridSize) {
+        handleGridSizeChange(videoGridSize, 'video_grid_size', '--video-size');
+      }
+
+      if (imageGridSize) {
+        handleGridSizeChange(imageGridSize, 'image_grid_size', '--image-size');
       }
     }
 
