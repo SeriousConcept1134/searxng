@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #main_results #results.image-detail-open.only_template_images {
-  width: min(98%, 59.25rem) !important;
+  width: calc(30% + 37rem) !important;
 }
 
 #main_results #results.only_template_images.image-detail-open #backToTop {
-  .ltr-left(56.75rem) !important;
+  .ltr-left(calc(25% + 45rem - 3rem)) !important;
   .ltr-right(inherit);
 }
 
@@ -17,16 +17,17 @@ article.result-images .detail {
   display: flex;
   flex-direction: column;
   position: fixed;
-  .ltr-left(60rem);
-  .ltr-right(0);
-  top: @search-height;
+  .ltr-left(calc(25% + 45rem + 10px));
+  .ltr-right(10px);
+  top: calc(@search-height + 10px);
   transition: top 0.064s ease-in 0s;
-  bottom: 0;
+  bottom: 10px;
   background: var(--color-result-detail-background);
-  border: 1px solid var(--color-result-detail-background);
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
   z-index: 1000;
   padding: 4rem 3rem 3rem 3rem;
-  overflow-y: scroll;
+  overflow-y: hidden;
 
   a.result-images-source {
     display: block;
@@ -209,10 +210,10 @@ article.result-images .detail {
 #results.image-detail-open.scrolling
   article.result-images[data-vim-selected]
   .detail {
-  top: 0;
+  top: 10px;
 
   a.result-images-source img {
-    max-height: calc(100vh - 25rem);
+    max-height: calc(100vh - 30rem);
   }
 }
 

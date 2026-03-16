@@ -505,6 +505,16 @@ article[data-vim-selected].category-social {
   & > a {
     position: relative;
     outline: none;
+    border-radius: 8px;
+    background: transparent;
+    display: inline-block;
+    vertical-align: top;
+    height: 100%;
+
+    &:hover {
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+      background-color: rgba(0, 0, 0, 0.4);
+    }
   }
 
   img {
@@ -515,7 +525,8 @@ article[data-vim-selected].category-social {
     width: auto;
     object-fit: cover;
     vertical-align: bottom;
-    background: var(--color-result-image-background);
+    background: transparent;
+    border-radius: 8px;
   }
 
   .image_resolution {
