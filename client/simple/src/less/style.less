@@ -312,22 +312,17 @@ article[data-vim-selected].category-social {
     .ltr-float-left();
 
     img.thumbnail {
-      width: 7rem;
-      height: unset; // remove height value that was needed for lazy loading
+      width: auto;
+      max-width: 15rem;
+      height: auto;
+      max-height: 122px;
       display: block;
+      border-radius: 5px;
     }
 
     .thumbnail_length {
       .image-label-bottom-right();
       right: 6px;
-    }
-  }
-
-  &.category-news {
-    a.thumbnail_link {
-      img.thumbnail {
-        width: 13rem;
-      }
     }
   }
 
@@ -418,10 +413,17 @@ article[data-vim-selected].category-social {
 }
 
 .result-videos {
+  a.thumbnail_link {
+    width: 20rem;
+  }
+
   /* Ensure video thumbnails default to 20rem in regular view by increasing selector specificity */
   a.thumbnail_link img.thumbnail {
-    width: 20rem;
+    width: 100%;
     height: auto;
+    max-width: none;
+    max-height: none;
+    border-radius: 8px;
   }
 
   .content {
@@ -558,6 +560,7 @@ article[data-vim-selected].category-social {
     .ltr-float-right() !important;
     height: 100px !important;
     width: auto !important;
+    border-radius: 8px;
   }
 
   table {
@@ -754,6 +757,7 @@ summary.title {
       display: block;
       margin: 0 auto;
       padding: 0;
+      border-radius: 8px;
     }
 
     dt {
@@ -1025,6 +1029,7 @@ summary.title {
 
     img {
       max-width: 98%;
+      border-radius: 8px;
     }
   }
 
@@ -1348,6 +1353,7 @@ body.video-grid-enabled.results-videos-present {
           aspect-ratio: 16 / 9 !important;
           object-fit: cover !important;
           padding: 0 !important;
+          border-radius: 8px !important;
         }
       }
       h3 {
