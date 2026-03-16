@@ -39,6 +39,11 @@
       <option value="200" {% if is_image_search and results_per_page == 200 %}selected="selected"{% endif %}>200 {{ _('results per page') }}</option>
     </select>
 
+    <div class="filter-item">
+      <label for="highlight-toggle">{{ _('Highlight') }}</label>
+      <input type="checkbox" id="highlight-toggle" class="checkbox-onoff" {% if request.cookies.get('keyword_highlight_disabled') != 'true' %}checked{% endif %}>
+    </div>
+
     {% if is_video_search %}
     {# UI controls for the video grid view and resizing #}
     <div id="video-view-config">

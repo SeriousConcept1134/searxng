@@ -99,6 +99,15 @@
       if (imageGridSize) {
         handleGridSizeChange(imageGridSize, 'image_grid_size', '--image-size');
       }
+
+      var highlightToggle = document.getElementById('highlight-toggle');
+      if (highlightToggle) {
+        highlightToggle.addEventListener('change', function() {
+          var disabled = !this.checked;
+          document.body.classList.toggle('keyword-highlight-disabled', disabled);
+          setCookie('keyword_highlight_disabled', disabled ? 'true' : 'false', 365);
+        });
+      }
     }
 
     if (document.readyState === 'loading') {

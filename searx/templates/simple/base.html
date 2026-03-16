@@ -37,7 +37,7 @@
   {%- endfor -%}
 {%- endif -%}
 {# Dynamic classes for video grid support and persistence. 'is_video_search' is provided by the backend. #}
-<body class="{{ endpoint }}_endpoint {% if is_video_search and request.cookies.get('video_grid_enabled') == 'true' %}video-grid-enabled{% endif %} {% if ns.has_videos %}results-videos-present{% endif %}" >
+<body class="{{ endpoint }}_endpoint {% if is_video_search and request.cookies.get('video_grid_enabled') == 'true' %}video-grid-enabled{% endif %} {% if ns.has_videos %}results-videos-present{% endif %} {% if request.cookies.get('keyword_highlight_disabled') == 'true' %}keyword-highlight-disabled{% endif %}" >
   <main id="main_{{  self._TemplateReference__context.name|replace("simple/", "")|replace(".html", "") }}" class="{{body_class}}">
     {% if errors %}
         <div class="dialog-error" role="alert">
