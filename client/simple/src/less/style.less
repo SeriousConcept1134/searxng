@@ -475,15 +475,9 @@ article[data-vim-selected].category-social {
   .result_author,
   .result_shipping,
   .result_source_country,
-  .highlight {
+  div.highlight {
     font-size: 0.8em;
     color: var(--color-result-publishdate-font);
-  }
-
-  /* Prevent titles from inheriting the smaller metadata font size */
-  h3 .highlight {
-    font-size: inherit;
-    color: inherit;
   }
 }
 
@@ -518,6 +512,7 @@ article[data-vim-selected].category-social {
 .highlight {
   color: var(--color-result-link-font-highlight);
   background: inherit;
+  font-weight: bold;
 }
 
 .empty_element {
