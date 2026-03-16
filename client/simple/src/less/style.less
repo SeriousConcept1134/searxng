@@ -230,6 +230,34 @@ article[data-vim-selected].category-social {
       background: inherit;
       font-weight: bold;
     }
+
+    .content-hidden {
+      display: none;
+    }
+
+    .btn-toggle-content {
+      display: inline-flex !important;
+      border: none;
+      background: transparent;
+      padding: 0;
+      margin-left: 0.3rem;
+      cursor: pointer;
+      vertical-align: middle;
+      line-height: 0;
+
+      svg rect {
+        fill: var(--color-result-border);
+      }
+
+      html.theme-dark & svg rect,
+      html.theme-black & svg rect {
+        fill: #ccc;
+      }
+
+      &:hover {
+        opacity: 1; // No hover effect
+      }
+    }
   }
 
   .altlink a {

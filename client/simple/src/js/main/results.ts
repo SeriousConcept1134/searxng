@@ -178,6 +178,90 @@ for (const element of swipeHorizontal) {
   });
 }
 
+// Snippet splitting and expansion logic
+const TRUNCATE_LIMIT = 330;
+const TOGGLE_SVG = `
+<svg width="14" height="8" viewBox="0 0 14 8" xmlns="http://www.w3.org/2000/svg">
+  <rect width="14" height="8" rx="1.5" ry="1.5" />
+  <circle cx="3.5" cy="4" r="1.1" fill="black" />
+  <circle cx="7" cy="4" r="1.1" fill="black" />
+  <circle cx="10.5" cy="4" r="1.1" fill="black" />
+</svg>`;
+
+const splitSnippet = (element: HTMLElement): void => {
+  if (element.querySelector(".btn-toggle-content")) return; // Already processed
+
+  const fullHtml = element.innerHTML;
+  if ((element.textContent || "").length <= TRUNCATE_LIMIT) return;
+
+  // We need to find a safe split point in the HTML string that doesn't break tags
+  let charCount = 0;
+  let splitIndex = -1;
+  let inTag = false;
+
+  for (let i = 0; i < fullHtml.length; i++) {
+    const char = fullHtml[i];
+    if (char === "<") {
+      inTag = true;
+    } else if (char === ">") {
+      inTag = false;
+    } else if (!inTag) {
+      charCount++;
+      if (charCount >= TRUNCATE_LIMIT && splitIndex === -1) {
+        // Try to find the next space to avoid cutting words
+        const nextSpace = fullHtml.indexOf(" ", i);
+        if (nextSpace !== -1 && nextSpace - i < 20) {
+          splitIndex = nextSpace;
+        } else {
+          splitIndex = i;
+        }
+      }
+    }
+  }
+
+  if (splitIndex !== -1 && splitIndex < fullHtml.length - 20) {
+    const visiblePart = fullHtml.substring(0, splitIndex);
+    const hiddenPart = fullHtml.substring(splitIndex);
+
+    element.innerHTML = `${visiblePart}<span class="content-hidden">${hiddenPart}</span><button class="btn-toggle-content" aria-expanded="false">${TOGGLE_SVG}</button>`;
+  }
+};
+
+const initSnippetSplitting = (): void => {
+  const snippets = document.querySelectorAll<HTMLElement>(".result .content");
+  for (const snippet of snippets) {
+    splitSnippet(snippet);
+  }
+};
+
+// Run immediately as this script is dynamically imported by router.ts
+const tryInit = () => {
+  initSnippetSplitting();
+};
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", tryInit);
+} else {
+  tryInit();
+}
+
+listen("click", ".btn-toggle-content", function (this: HTMLButtonElement) {
+  const parent = this.parentElement;
+  if (!parent) return;
+
+  const hiddenSpan = parent.querySelector<HTMLElement>(".content-hidden");
+  if (!hiddenSpan) return;
+
+  const isExpanded = this.getAttribute("aria-expanded") === "true";
+  if (isExpanded) {
+    hiddenSpan.style.display = "none";
+    this.setAttribute("aria-expanded", "false");
+  } else {
+    hiddenSpan.style.display = "inline";
+    this.setAttribute("aria-expanded", "true");
+  }
+});
+
 window.addEventListener(
   "scroll",
   () => {
