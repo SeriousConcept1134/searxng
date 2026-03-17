@@ -383,7 +383,8 @@ select {
 
   @media (prefers-color-scheme: dark) {
     html.theme-auto select,
-    html.theme-dark select {
+    html.theme-dark select,
+    html.theme-black select {
       background-image: data-uri(
         "image/svg+xml;charset=UTF-8",
         @select-dark-svg-path
@@ -391,7 +392,8 @@ select {
     }
   }
 
-  html.theme-dark select {
+  html.theme-dark select,
+  html.theme-black select {
     background-image: data-uri(
       "image/svg+xml;charset=UTF-8",
       @select-dark-svg-path
