@@ -2,10 +2,12 @@
 """Bing-Images: description see :py:obj:`searx.engines.bing`."""
 # pylint: disable=invalid-name
 import json
+import re
 from urllib.parse import urlencode
 
 from lxml import html
 
+from searx import logger
 from searx.engines.bing import set_bing_cookies
 from searx.engines.bing import fetch_traits  # pylint: disable=unused-import
 
@@ -72,12 +74,30 @@ def response(resp):
 
     for result in dom.xpath('//ul[contains(@class, "dgControl_list")]/li'):
 
-        metadata = result.xpath('.//a[@class="iusc"]/@m')
-        if not metadata:
+        metadata_raw = result.xpath('.//a[@class="iusc"]/@m')
+        if not metadata_raw:
             continue
 
-        metadata = json.loads(result.xpath('.//a[@class="iusc"]/@m')[0])
+        metadata = json.loads(metadata_raw[0])
         title = ' '.join(result.xpath('.//div[@class="infnmpt"]//a/text()')).strip()
+        # Direct string replacement is often more reliable than regex for fixed characters
+        title = title.replace('\ue000', '').replace('\ue001', '').replace('\uE000', '').replace('\uE001', '')
+
+        # Use .get() and ensure we have a string to work with
+        desc = metadata.get('desc')
+        t = metadata.get('t')
+        
+        # LOGIC CHANGE: Be very explicit about preferring any non-empty string
+        content = desc if desc else t
+        if content:
+            content = content.replace('\ue000', '').replace('\ue001', '').replace('\uE000', '').replace('\uE001', '')
+        
+        # HACK: SearXNG clears content if it is identical to title in searx/result_types/_base.py.
+        # Since Bing often returns the same for both, we append a zero-width space to content
+        # if it matches the title to preserve it for the UI.
+        if content and content == title:
+            content += '\u200B'
+
         img_format = ' '.join(result.xpath('.//div[@class="imgpt"]/div/span/text()')).strip().split(" · ")
         source = ' '.join(result.xpath('.//div[@class="imgpt"]//div[@class="lnkw"]//a/text()')).strip()
         results.append(
@@ -86,7 +106,7 @@ def response(resp):
                 'url': metadata['purl'],
                 'thumbnail_src': metadata['turl'],
                 'img_src': metadata['murl'],
-                'content': metadata.get('desc'),
+                'content': content,
                 'title': title,
                 'source': source,
                 'resolution': img_format[0],

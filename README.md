@@ -2,7 +2,7 @@
 
 <p align="left">
   <a href="https://searxng.org">
-    <img src="https://raw.githubusercontent.com/searxng/searxng/master/client/simple/src/brand/searxng.svg" alt="SearXNG" width="512px">
+    <img src="https://raw.githubusercontent.com/SeriousConcept1134/searxng-enhanced/refs/heads/dev/searxng_enhanced.png" alt="SearXNG" width="512px">
   </a>
 </p>
 
@@ -25,7 +25,7 @@ and targeted bug fixes — without compromising the core privacy guarantees.
 
 **Goals:**
 
-- Stay current with upstream `master` at all times
+- Stay current with upstream `master` at all times (whenever possible)
 - Layer in meaningful UI/UX improvements incrementally
 - Fix bugs faster where possible
 

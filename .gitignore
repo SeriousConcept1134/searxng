@@ -27,3 +27,7 @@ searx/version_frozen.py
 .dir-locals.el
 
 .python-version
+
+# Exclude enhanced logo images
+searxng_enhanced.png
+searxng_enhanced2.png
