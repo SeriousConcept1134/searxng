@@ -407,6 +407,8 @@ def get_client_settings():
         'image_results_per_page': req_pref.get_value('image_results_per_page'),
         'video_grid_size': int(sxng_request.cookies.get('video_grid_size', 300)),
         'image_grid_size': int(sxng_request.cookies.get('image_grid_size', 192)),
+        'result_truncation': req_pref.get_value('result_truncation'),
+        'result_truncation_limit': req_pref.get_value('result_truncation_limit'),
     }
 
 

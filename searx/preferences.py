@@ -78,6 +78,20 @@ class StringSetting(Setting):
     """Setting of plain string values"""
 
 
+class ValidationSetting(Setting):
+    """Setting with validation and conversion."""
+
+    def parse(self, data: str):
+        try:
+            self.value = int(data)
+        except ValueError:
+            pass
+
+    def save(self, name: str, resp: flask.Response):
+        """Save cookie ``name`` in the HTTP response object"""
+        resp.set_cookie(name, str(self.value), max_age=COOKIE_MAX_AGE)
+
+
 class EnumStringSetting(Setting):
     """Setting of a value which can only come from the given choices"""
 
@@ -528,6 +542,14 @@ class Preferences:
                 settings['ui']['url_formatting'],
                 choices=['pretty', 'full', 'host']
             ),
+            'result_truncation': BooleanSetting(
+                settings['ui']['result_truncation'],
+                locked=is_locked('result_truncation')
+            ),
+            'result_truncation_limit': ValidationSetting(
+                settings['ui']['result_truncation_limit'],
+                locked=is_locked('result_truncation_limit')
+            ),
             # fmt: on
         }
 
@@ -581,6 +603,9 @@ class Preferences:
 
     def parse_form(self, input_data: dict[str, str]):
         """Parse formular (``<input>``) data from a ``flask.request.form``"""
+        if hasattr(input_data, 'to_dict'):
+            input_data = input_data.to_dict()
+
         disabled_engines = []
         enabled_categories = []
         disabled_plugins = []

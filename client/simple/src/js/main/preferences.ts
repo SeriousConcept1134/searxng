@@ -41,3 +41,14 @@ listen("submit", "#save-preferences", async function (this: HTMLFormElement, eve
     console.error("Error saving preferences:", error);
   }
 });
+
+// Dynamic UI for preferences
+const truncationCheckbox = document.getElementById("result_truncation");
+const truncationLimitFieldset = document.getElementById("result_truncation_limit_fieldset");
+
+if (truncationCheckbox && truncationLimitFieldset) {
+  listen("change", truncationCheckbox, () => {
+    truncationLimitFieldset.hidden = !(truncationCheckbox as HTMLInputElement).checked;
+  });
+}
+

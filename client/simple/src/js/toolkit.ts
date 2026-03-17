@@ -24,6 +24,8 @@ type Settings = {
   image_results_per_page?: number;
   video_grid_size?: number;
   image_grid_size?: number;
+  result_truncation?: boolean;
+  result_truncation_limit?: number;
 };
 
 type HTTPOptions = {

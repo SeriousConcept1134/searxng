@@ -210,6 +210,10 @@
     {%- if 'search_on_category_select' not in locked_preferences -%}
       {%- include 'simple/preferences/search_on_category_select.html' -%}
     {%- endif -%}
+    {%- if 'result_truncation' not in locked_preferences -%}
+      {%- include 'simple/preferences/result_truncation.html' -%}
+      {%- include 'simple/preferences/result_truncation_limit.html' -%}
+    {%- endif -%}
     {%- include 'simple/preferences/hotkeys.html' -%}
     {%- include 'simple/preferences/urlformatting.html' -%}
     {{- plugin_preferences('ui') -}}

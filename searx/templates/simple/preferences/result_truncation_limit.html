@@ -1,0 +1,14 @@
+<fieldset id="result_truncation_limit_fieldset" {% if not preferences.get_value('result_truncation') %}hidden{% endif %}>{{- '' -}}
+  <legend id="pref_result_truncation_limit">{{ _('Truncation threshold') }}</legend>{{- '' -}}
+  <p class="value">{{- '' -}}
+    <input type="number" {{- ' ' -}}
+           name="result_truncation_limit" {{- ' ' -}}
+           id="result_truncation_limit" {{- ' ' -}}
+           value="{{ preferences.get_value('result_truncation_limit') }}" {{- ' ' -}}
+           min="50" {{- ' ' -}}
+           aria-labelledby="pref_result_truncation_limit">{{- ' ' -}}
+  </p>{{- '' -}}
+  <div class="description">
+    {{- _('Character count threshold for truncation') -}}
+  </div>{{- '' -}}
+</fieldset>{{- '' -}}

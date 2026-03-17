@@ -179,7 +179,7 @@ for (const element of swipeHorizontal) {
 }
 
 // Snippet splitting and expansion logic
-const TRUNCATE_LIMIT = 330;
+const TRUNCATE_LIMIT = settings.result_truncation_limit ?? 330;
 const TOGGLE_SVG = `
 <svg width="14" height="8" viewBox="0 0 14 8" xmlns="http://www.w3.org/2000/svg">
   <rect width="14" height="8" rx="1.5" ry="1.5" />
@@ -228,6 +228,7 @@ const splitSnippet = (element: HTMLElement): void => {
 };
 
 const initSnippetSplitting = (): void => {
+  if (settings.result_truncation === false) return;
   const snippets = document.querySelectorAll<HTMLElement>(".result .content");
   for (const snippet of snippets) {
     splitSnippet(snippet);

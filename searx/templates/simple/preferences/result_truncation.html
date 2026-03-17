@@ -1,0 +1,17 @@
+<fieldset>{{- '' -}}
+  <legend id="pref_result_truncation">{{ _('Truncate search results') }}</legend>{{- '' -}}
+  <p class="value">{{- '' -}}
+    <input type="checkbox" {{- ' ' -}}
+           name="result_truncation" {{- ' ' -}}
+           id="result_truncation" {{- ' ' -}}
+           aria-labelledby="pref_result_truncation" {{- ' ' -}}
+           class="checkbox-onoff" {{- ' ' -}}
+           {%- if preferences.get_value('result_truncation') -%}
+             checked
+           {%- endif -%}{{- ' ' -}}
+           >{{- ' ' -}}
+  </p>{{- '' -}}
+  <div class="description">
+    {{- _('Truncate search result descriptions and provide a button to show full text') -}}
+  </div>{{- '' -}}
+</fieldset>{{- '' -}}
