@@ -36,19 +36,9 @@
         if (mainForm) {
           // Ensure the selector's name/value is included in the submit
           selectEl.setAttribute('name', 'results_per_page');
-          
-          // Re-inject hidden inputs for all selected categories to avoid defaulting to 'general'
-          {% for category in selected_categories %}
-          var catInput = document.createElement('input');
-          catInput.type = 'hidden';
-          catInput.name = 'category_{{ category }}';
-          catInput.value = '1';
-          mainForm.appendChild(catInput);
-          {% endfor %}
 
-          mainForm.submit();
-        } else {
-          // Fallback if form is missing
+          mainForm.requestSubmit();
+          } else {          // Fallback if form is missing
           var url = new URL(window.location.href);
           url.searchParams.set('results_per_page', selectEl.value);
           window.location.href = url.toString();

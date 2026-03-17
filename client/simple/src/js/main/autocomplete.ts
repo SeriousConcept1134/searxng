@@ -43,7 +43,7 @@ const fetchResults = async (qInput: HTMLInputElement, query: string): Promise<vo
         qInput.value = result;
 
         const form = document.querySelector<HTMLFormElement>("#search");
-        form?.submit();
+        form?.requestSubmit();
 
         autocomplete.classList.remove("open");
       });

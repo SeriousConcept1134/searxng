@@ -95,17 +95,17 @@ for (const button of categoryButtons) {
 if (document.querySelector("div.search_filters")) {
   const safesearchElement = document.getElementById("safesearch");
   if (safesearchElement) {
-    listen("change", safesearchElement, () => searchForm.submit());
+    listen("change", safesearchElement, () => searchForm.requestSubmit());
   }
 
   const timeRangeElement = document.getElementById("time_range");
   if (timeRangeElement) {
-    listen("change", timeRangeElement, () => searchForm.submit());
+    listen("change", timeRangeElement, () => searchForm.requestSubmit());
   }
 
   const languageElement = document.getElementById("language");
   if (languageElement) {
-    listen("change", languageElement, () => searchForm.submit());
+    listen("change", languageElement, () => searchForm.requestSubmit());
   }
 }
 
