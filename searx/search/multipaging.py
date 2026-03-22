@@ -9,11 +9,11 @@ if t.TYPE_CHECKING:
     from searx.result_types import EngineResults
 
 
-def get_native_results_per_page(processor: "OnlineProcessor") -> int:
+def get_native_results_per_page(processor: "OnlineProcessor") -> t.Optional[int]:
     """Determine the engine's native results per page."""
     # 1. Check for engine.results_per_page attribute
-    # 2. Fallback to 10 if nothing found (standard for most engines)
-    return getattr(processor.engine, "results_per_page", 10)
+    # 2. Return None if not found (let the caller decide on a fallback or inference)
+    return getattr(processor.engine, "results_per_page", None)
 
 
 def pre_process_params(processor: "OnlineProcessor", params: "OnlineParams"):
@@ -25,7 +25,9 @@ def pre_process_params(processor: "OnlineProcessor", params: "OnlineParams"):
     if not user_results_per_page:
         return
 
-    native_results_per_page = get_native_results_per_page(processor)
+    # Use 10 as a sane fallback for calculating the initial offset if capacity is unknown
+    native_results_per_page = get_native_results_per_page(processor) or 10
+
     if user_results_per_page <= native_results_per_page:
         return
 
@@ -52,13 +54,44 @@ def fetch_multiple_pages(
     """
     Fetch and stitch multiple pages of results until target_count is reached.
     """
+    # Helper to count valid results (those with a URL)
+    def count_results(results):
+        return sum(1 for r in results if "url" in r)
+
+    # Helper to truncate results while preserving non-result items (like suggestions)
+    def truncate_results(results, limit):
+        truncated = []
+        count = 0
+        for r in results:
+            if "url" in r:
+                if count < limit:
+                    truncated.append(r)
+                    count += 1
+            else:
+                # Keep suggestions, answers, etc.
+                truncated.append(r)
+        return truncated
+
+    initial_count = count_results(initial_results)
+
+    # 1. If we already have enough results, truncate and return immediately.
+    if initial_count >= target_count:
+        return truncate_results(initial_results, target_count)
+
+    # 2. If initial request returned no results, stop.
+    if initial_count == 0:
+        return initial_results
+
+    # 3. Check engine's explicit capacity.
     native_results_per_page = get_native_results_per_page(processor)
 
-    current_count = sum(1 for r in initial_results if "url" in r)
-    if current_count >= target_count or current_count == 0:
+    # 4. If the user's target is within the engine's explicit capacity,
+    # we stop here (Bug fix: prevent extra query for 9/10 results).
+    if native_results_per_page is not None and target_count <= native_results_per_page:
         return initial_results
 
     all_results = initial_results
+    current_count = initial_count
 
     def get_engine_data(results):
         for res in reversed(results):
@@ -78,7 +111,8 @@ def fetch_multiple_pages(
 
         sub_params: "OnlineParams" = deepcopy(params)
         sub_params["pageno"] = current_native_pageno
-        sub_params["results_per_page"] = native_results_per_page
+        # If we have an explicit capacity, use it; otherwise fallback to 10 for the sub-query.
+        sub_params["results_per_page"] = native_results_per_page or 10
 
         if current_engine_data:
             sub_params["engine_data"][processor.engine.name] = current_engine_data
@@ -93,10 +127,14 @@ def fetch_multiple_pages(
 
             new_actual_results = [r for r in new_results if "url" in r]
             if not new_actual_results:
+                # Inference: Engine returned no more results for this query.
                 break
 
             all_results.extend(new_actual_results)
             current_count += len(new_actual_results)
+
+            if current_count >= target_count:
+                break
 
             # Update engine_data for the next loop
             current_engine_data = get_engine_data(new_results)
@@ -104,5 +142,9 @@ def fetch_multiple_pages(
         except Exception:  # pylint: disable=broad-except
             processor.logger.error("Multipaging: sub-request failed for engine %s", processor.engine.name)
             break
+
+    # Final truncation to ensure we adhere to the user's preference
+    if current_count > target_count:
+        return truncate_results(all_results, target_count)
 
     return all_results

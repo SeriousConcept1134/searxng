@@ -31,3 +31,4 @@ searx/version_frozen.py
 # Exclude enhanced logo images
 searxng_enhanced.png
 searxng_enhanced2.png
+searx/settings.yml
