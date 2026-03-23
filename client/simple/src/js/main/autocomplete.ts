@@ -43,6 +43,7 @@ const fetchResults = async (qInput: HTMLInputElement, query: string): Promise<vo
         qInput.value = result;
 
         const form = document.querySelector<HTMLFormElement>("#search");
+        // Use requestSubmit() to ensure category synchronization is triggered
         form?.requestSubmit();
 
         autocomplete.classList.remove("open");
@@ -80,6 +81,12 @@ listen("input", qInput, () => {
 const autocomplete: HTMLElement | null = document.querySelector<HTMLElement>(".autocomplete");
 const autocompleteList: HTMLUListElement | null = document.querySelector<HTMLUListElement>(".autocomplete ul");
 if (autocompleteList) {
+  listen("keydown", qInput, (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      autocomplete?.classList.remove("open");
+    }
+  });
+
   listen("keyup", qInput, (event: KeyboardEvent) => {
     const listItems = [...autocompleteList.children] as HTMLElement[];
 
@@ -105,7 +112,6 @@ if (autocompleteList) {
         newCurrentIndex = (currentIndex + 1) % listItems.length;
         break;
       }
-      case "Tab":
       case "Enter":
         if (autocomplete) {
           autocomplete.classList.remove("open");
@@ -128,5 +134,13 @@ if (autocompleteList) {
         }
       }
     }
+  });
+
+  listen("blur", qInput, () => {
+    autocomplete?.classList.remove("open");
+  });
+
+  listen("focus", qInput, () => {
+    autocomplete?.classList.add("open");
   });
 }
