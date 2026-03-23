@@ -3,7 +3,7 @@
 This document tracks the handling of upstream commits from `searxng/searxng` (master) into this enhanced fork's `dev` branch.
 
 **Date of Analysis**: 2026-03-23
-**Status**: 9 commits analyzed. 6 merged (3 with manual conflict resolution), 3 skipped.
+**Status**: 10 commits analyzed. 7 merged (4 with manual conflict resolution), 3 skipped.
 
 ---
 
@@ -14,7 +14,7 @@ The following commits were identified as cleanly mergeable and were cherry-picke
 | Upstream Hash | Local Hash | Description |
 | :--- | :--- | :--- |
 | `6c7e9c197` | `90050d4a4` | [upd] github-actions: Bump actions/cache from 5.0.3 to 5.0.4 |
-| `8ad72872b` | `7f3bd3154` | [upd] github-actions: Bump github/codeql-action from 4.32.6 to 4.33.0 |
+| `8ad72872b" | `7f3bd3154` | [upd] github-actions: Bump github/codeql-action from 4.32.6 to 4.33.0 |
 | `c589b56d6` | `b79e11eb5` | [upd] web-client (simple): Bump the minor group |
 
 ---
@@ -41,6 +41,11 @@ The following commits required manual intervention to preserve fork-specific enh
 *   **Resolution**:
     *   **Manual Update**: Manually updated `package.json` to version `8.0.0` and regenerated `package-lock.json`.
     *   **Asset Rebuild**: Cleaned `searx/static/themes/simple/` and ran `./manage themes.all` to generate fresh assets. This was necessary because upstream's pre-built assets conflict with our custom UI source code.
+
+### [fix] google: switch to using "Google App" for Android useragent (`2c1ce3b`)
+*   **Local Hash**: `9738511ac`
+*   **Resolution**:
+    *   **Adopted**: Resolved all conflicts in `google.py` in favor of the upstream commit's version to maintain compatibility with the new Android User Agent layout.
 
 ---
 
