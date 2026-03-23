@@ -12,7 +12,6 @@ engines:
 """
 
 import random
-import json
 import re
 import string
 import time
@@ -24,7 +23,6 @@ import babel.core
 import babel.languages
 from lxml import html
 
-from searx import logger
 from searx.enginelib.traits import EngineTraits
 from searx.exceptions import SearxEngineCaptchaException
 from searx.locales import get_official_locales, language_tag, region_tag
@@ -71,7 +69,7 @@ filter_mapping = {0: "off", 1: "medium", 2: "high"}
 
 # Suggestions are links placed in a *card-section*, we extract only the text
 # from the links not the links itself.
-suggestion_xpath = '//div[contains(@class, "ouy7Mc")]//a'
+suggestion_xpath = '//div[contains(@class, "gGQDvd iIWm4b")]//a'
 
 
 _arcid_range = string.ascii_letters + string.digits + "_-"
@@ -271,6 +269,15 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
     ret_val["headers"]["Accept"] = "*/*"
     ret_val["headers"]["User-Agent"] = gen_gsa_useragent()
 
+    # Hardcoded default ENID Header required alongside the Android Google App
+    # User Agent
+    ret_val["headers"]["__Secure-ENID"] = (
+        "28.SE=II9FMkz92GewodDwKRBFsMISph7GsQs8JYLdXmAlprl6UcC02O2p7kfQlAWuwT"
+        "oygcrqHpmwQSH57b0c2kXfRfo35J8aV5FYSeUzYB67hqZQ2tZB7-o0hlTKwb5qMjn8Cf"
+        "w_AZ2s_6KIFMAl2goXGcXHSfgu4jwZOqShlHCcag0ppy_NnxJYWxpLkaeuGCICwWoIFJ"
+        "HP6Gy4BOkIEsl1N_k6F6jMF_OklE9qIubiyKkNaA"
+    )
+
     # Cookies
 
     # - https://github.com/searxng/searxng/pull/1679#issuecomment-1235432746
@@ -314,7 +321,7 @@ def request(query: str, params: "OnlineParams") -> None:
                 # 'sstk': 'AcOHfVkD7sWCSAheZi-0tx_09XDO55gTWY0JNq3_V26cNN-c8lfD45aZYPI8s_Bqp8s57AHz5pxchDtAGCA_cikAWSjy9kw3kgg'
                 # formally known as use_mobile_ui
                 # "asearch": "arc",
-                # "async": ui_async(start),
+                # "async": str_async,
             }
         )
     )
@@ -329,32 +336,16 @@ def request(query: str, params: "OnlineParams") -> None:
     params["headers"].update(google_info["headers"])
 
 
-# =26;[3,"dimg_ZNMiZPCqE4apxc8P3a2tuAQ_137"]a87;data:image/jpeg;base64,/9j/4AAQSkZJRgABA
-# ...6T+9Nl4cnD+gr9OK8I56/tX3l86nWYw//2Q==26;
-RE_DATA_IMAGE = re.compile(r'"(dimg_[^"]*)"[^;]*;(data:image[^;]*;[^;]*);')
-RE_DATA_IMAGE_end = re.compile(r'"(dimg_[^"]*)"[^;]*;(data:image[^;]*;[^;]*)$')
+# regex match to get image map that is found inside the returned javascript:
+# (function(){var s='...';var i=['...'] ...}
+RE_DATA_IMAGE = re.compile(r"(data:image[^']*?)'[^']*?'((?:dimg|pimg|tsuid)[^']*)")
 
 
-def parse_data_images(text: str):
+def parse_url_images(text: str):
     data_image_map = {}
 
-    # Google often serves image maps in a JSON-like structure (ldi or pim).
-    # Capturing this ensures we can map image IDs to their actual data URLs.
-    for match in re.finditer(r'google\.(?:ldi|pim)=({.*?});', text):
-        try:
-            data = json.loads(match.group(1))
-            data_image_map.update(data)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.debug("google parse_data_images json error: %s", e)
-
-    for img_id, data_image in RE_DATA_IMAGE.findall(text):
-        end_pos = data_image.rfind("=")
-        if end_pos > 0:
-            data_image = data_image[: end_pos + 1]
-        data_image_map[img_id] = data_image
-    last = RE_DATA_IMAGE_end.search(text)
-    if last:
-        data_image_map[last.group(1)] = last.group(2)
+    for image_url, img_id in RE_DATA_IMAGE.findall(text):
+        data_image_map[img_id] = image_url.encode('utf-8').decode("unicode-escape")
     logger.debug("data:image objects --> %s", list(data_image_map.keys()))
     return data_image_map
 
@@ -363,7 +354,7 @@ def response(resp: "SXNG_Response"):
     """Get response from google's search request"""
     # pylint: disable=too-many-branches, too-many-statements
     detect_google_sorry(resp)
-    data_image_map = parse_data_images(resp.text)
+    data_image_map = parse_url_images(resp.text)
 
     results = EngineResults()
 
@@ -371,19 +362,18 @@ def response(resp: "SXNG_Response"):
     dom = html.fromstring(resp.text)
 
     # parse results
-
-    for result in eval_xpath_list(dom, './/div[contains(@class, "MjjYud")]'):
+    for result in eval_xpath_list(dom, '//a[@data-ved and not(@class)]'):
         # pylint: disable=too-many-nested-blocks
 
         try:
-            title_tag = eval_xpath_getindex(result, './/div[contains(@role, "link")]', 0, default=None)
+            title_tag = eval_xpath_getindex(result, './/div[@style]', 0, default=None)
             if title_tag is None:
                 # this not one of the common google results *section*
                 logger.debug("ignoring item from the result_xpath list: missing title")
                 continue
             title = extract_text(title_tag)
 
-            raw_url = eval_xpath_getindex(result, ".//a/@href", 0, None)
+            raw_url = result.get("href")
             if raw_url is None:
                 logger.debug(
                     'ignoring item from the result_xpath list: missing url of title "%s"',
@@ -396,30 +386,23 @@ def response(resp: "SXNG_Response"):
             else:
                 url = raw_url
 
-            # Modern Google snippet logic using multiple data-sncf attribute values
-            content_nodes = eval_xpath(result, './/div[@data-sncf="1" or @data-sncf="2"]')
+            content_nodes = eval_xpath(result, '../..//div[contains(@class, "ilUpNd H66NU aSRlid")]')
             for item in content_nodes:
                 for script in item.xpath(".//script"):
                     script.getparent().remove(script)
 
-            content = extract_text(content_nodes)
+            content = extract_text(content_nodes[0])
 
-            # Refined thumbnail extraction: Loop through all images to find the best match,
-            # excluding favicons and irrelevant UI elements.
+            # Images that are NOT the favicon
+            xpath_image = eval_xpath_getindex(result, './/img', index=0, default=None)
+
             thumbnail = None
-            for img in result.xpath('.//img'):
-                src = img.get('src')
-                if not src:
-                    continue
-
-                if src.startswith('data:image'):
-                    img_id = img.get('id')
-                    thumbnail = data_image_map.get(img_id)
-                    if thumbnail:
-                        break
-                elif 'favicon' not in src and img.get('class') != 'XNo5Ab':
-                    thumbnail = src
-                    break
+            if xpath_image is not None:
+                thumbnail = xpath_image.get("src")
+                if thumbnail.startswith("data:image"):
+                    img_id = xpath_image.get("id")
+                    if img_id:
+                        thumbnail = data_image_map.get(img_id)
 
             results.append({"url": url, "title": title, "content": content or '', "thumbnail": thumbnail})
 
