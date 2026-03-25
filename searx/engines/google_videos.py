@@ -105,6 +105,15 @@ def extract_descriptions(text: str):
     return descriptions
 
 
+def yt_reconstruct_thumbnail(url: str) -> str | None:
+    """Reconstruct high-resolution YouTube thumbnail from URL."""
+    if 'youtube.com' in url or 'youtu.be' in url:
+        yt_id_match = re.search(r'(?:v=|\/live\/|embed\/|youtu\.be\/)([0-9A-Za-z_-]{11})', url)
+        if yt_id_match:
+            return f"https://img.youtube.com/vi/{yt_id_match.group(1)}/mqdefault.jpg"
+    return None
+
+
 def request(query, params):
     """Google-Video search request"""
     google_info = get_google_info(params, traits)
@@ -168,16 +177,17 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
         metadata_div = eval_xpath_getindex(result, './/div[contains(@class, "WRu9Cd")]', 0, default=None)
         pub_info = extract_text(metadata_div) if metadata_div is not None else None
 
-        thumbnail = None
-        img_node = eval_xpath_getindex(result, './/*[contains(@class, "rIRoqf")]//img', 0, default=None)
-        if img_node is not None:
-            img_id = img_node.get("id")
-            if img_id and img_id in data_image_map:
-                thumbnail = data_image_map[img_id]
-            else:
-                thumbnail = img_node.get("src")
-                if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
-                    thumbnail = img_node.get("data-src") or thumbnail
+        thumbnail = yt_reconstruct_thumbnail(url) if url else None
+        if not thumbnail:
+            img_node = eval_xpath_getindex(result, './/*[contains(@class, "rIRoqf")]//img', 0, default=None)
+            if img_node is not None:
+                img_id = img_node.get("id")
+                if img_id and img_id in data_image_map:
+                    thumbnail = data_image_map[img_id]
+                else:
+                    thumbnail = img_node.get("src")
+                    if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
+                        thumbnail = img_node.get("data-src") or thumbnail
 
         if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail) and video_id:
             thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
@@ -235,16 +245,17 @@ def parse_layout_2(dom, text, data_image_map, script_descriptions):
             published_date = post_match.group(1).split('\n')[0].strip()
 
         # 5. Thumbnail
-        thumbnail = None
-        img_node = eval_xpath_getindex(result, './/img', 0, default=None)
-        if img_node is not None:
-            img_id = img_node.get("id")
-            if img_id and img_id in data_image_map:
-                thumbnail = data_image_map[img_id]
-            else:
-                thumbnail = img_node.get("src")
-                if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
-                    thumbnail = img_node.get("data-src") or thumbnail
+        thumbnail = yt_reconstruct_thumbnail(url) if url else None
+        if not thumbnail:
+            img_node = eval_xpath_getindex(result, './/img', 0, default=None)
+            if img_node is not None:
+                img_id = img_node.get("id")
+                if img_id and img_id in data_image_map:
+                    thumbnail = data_image_map[img_id]
+                else:
+                    thumbnail = img_node.get("src")
+                    if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
+                        thumbnail = img_node.get("data-src") or thumbnail
 
         if title and url:
             results.append({
