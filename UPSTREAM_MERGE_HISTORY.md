@@ -3,7 +3,7 @@
 This document tracks the handling of upstream commits from `searxng/searxng` (master) into this enhanced fork's `dev` branch.
 
 **Date of Analysis**: 2026-03-23
-**Status**: 10 commits analyzed. 7 merged (4 with manual conflict resolution), 3 skipped.
+**Status**: 11 commits analyzed. 8 merged (5 with manual conflict resolution), 3 skipped.
 
 ---
 
@@ -46,6 +46,12 @@ The following commits required manual intervention to preserve fork-specific enh
 *   **Local Hash**: `9738511ac`
 *   **Resolution**:
     *   **Adopted**: Resolved all conflicts in `google.py` in favor of the upstream commit's version to maintain compatibility with the new Android User Agent layout.
+
+### [fix] google engine - don't set __Secure-ENID in the HTTP header (`c4f51aa`)
+*   **Local Hash**: `181b30824`
+*   **Resolution**:
+    *   **Manual Application**: The header was surgically removed from our refactored `google.py` implementation.
+    *   **Adopted**: Upstream's optimization to remove the redundant `__Secure-ENID` header, as the Android GSA parsing logic only requires the User-Agent.
 
 ---
 
