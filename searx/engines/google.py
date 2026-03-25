@@ -371,12 +371,20 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
         if title and url and (url, template) not in seen_results:
             content = extract_text(v.xpath('.//div[contains(@class, "vqseUe") or contains(@class, "vwPXuf")]')) or script_descriptions.get(title, "")
             
-            img_node = eval_xpath_getindex(v, './/img', 0, default=None)
-            img_id = img_node.get("id") if img_node is not None else None
-            thumbnail = data_image_map.get(img_id)
-            if not thumbnail and img_id:
-                for k, val in data_image_map.items():
-                    if k.endswith(img_id): thumbnail = val; break
+            thumbnail = None
+            # YouTube High-Res Reconstruction
+            if 'youtube.com' in url or 'youtu.be' in url:
+                yt_id_match = re.search(r'(?:v=|\/live\/|embed\/|youtu\.be\/)([0-9A-Za-z_-]{11})', url)
+                if yt_id_match:
+                    thumbnail = f"https://img.youtube.com/vi/{yt_id_match.group(1)}/mqdefault.jpg"
+
+            if not thumbnail:
+                img_node = eval_xpath_getindex(v, './/img', 0, default=None)
+                img_id = img_node.get("id") if img_node is not None else None
+                thumbnail = data_image_map.get(img_id)
+                if not thumbnail and img_id:
+                    for k, val in data_image_map.items():
+                        if k.endswith(img_id): thumbnail = val; break
             
             if (not thumbnail) and v.get('data-vid'):
                 thumbnail = f"https://img.youtube.com/vi/{v.get('data-vid')}/hqdefault.jpg"
@@ -457,36 +465,43 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
             desc_node = sw.xpath('.//div[contains(@class, "VwiC3b") or contains(@class, "yXK7lf")]')
             content = extract_text(desc_node[0]) if desc_node else ""
         
-        # Select main thumbnail (Single or Collage Large), avoiding favicons (XNo5Ab)
-        img_node = eval_xpath_getindex(sw, './/div[contains(@class, "LnCrMe")]//img | .//div[contains(@class, "HDbz4b")]//img', 0, default=None)
-        
-        # Fallback to any image that isn't a favicon if the specific containers aren't found
-        if img_node is None:
-            for img in sw.xpath('.//img[not(contains(@class, "XNo5Ab"))]'):
-                if img.get('id') or (img.get('width') and int(img.get('width')) > 30):
-                    img_node = img
-                    break
-
         thumbnail = None
-        if img_node is not None:
-            # 1. Use mapping if ID exists
-            img_id = img_node.get("id")
-            thumbnail = data_image_map.get(img_id)
+        # YouTube High-Res Reconstruction for Web Results
+        if 'youtube.com' in url or 'youtu.be' in url:
+            yt_id_match = re.search(r'(?:v=|\/live\/|embed\/|youtu\.be\/)([0-9A-Za-z_-]{11})', url)
+            if yt_id_match:
+                thumbnail = f"https://img.youtube.com/vi/{yt_id_match.group(1)}/mqdefault.jpg"
+
+        if not thumbnail:
+            # Select main thumbnail (Single or Collage Large), avoiding favicons (XNo5Ab)
+            img_node = eval_xpath_getindex(sw, './/div[contains(@class, "LnCrMe")]//img | .//div[contains(@class, "HDbz4b")]//img', 0, default=None)
             
-            # 2. Fallback to CSIID
-            if not thumbnail:
-                thumbnail = data_image_map.get(img_node.get("data-csiid"))
-            
-            # 3. Fallback to src if it's already a real URL
-            if not thumbnail:
-                src = img_node.get('src')
-                if src and src.startswith('http'):
-                    thumbnail = src
-            
-            # 4. Fallback to suffix match
-            if not thumbnail and img_id:
-                for k, val in data_image_map.items():
-                    if k.endswith(img_id): thumbnail = val; break
+            # Fallback to any image that isn't a favicon if the specific containers aren't found
+            if img_node is None:
+                for img in sw.xpath('.//img[not(contains(@class, "XNo5Ab"))]'):
+                    if img.get('id') or (img.get('width') and int(img.get('width')) > 30):
+                        img_node = img
+                        break
+
+            if img_node is not None:
+                # 1. Use mapping if ID exists
+                img_id = img_node.get("id")
+                thumbnail = data_image_map.get(img_id)
+                
+                # 2. Fallback to CSIID
+                if not thumbnail:
+                    thumbnail = data_image_map.get(img_node.get("data-csiid"))
+                
+                # 3. Fallback to src if it's already a real URL
+                if not thumbnail:
+                    src = img_node.get('src')
+                    if src and src.startswith('http'):
+                        thumbnail = src
+                
+                # 4. Fallback to suffix match
+                if not thumbnail and img_id:
+                    for k, val in data_image_map.items():
+                        if k.endswith(img_id): thumbnail = val; break
         
         results.append({'url': url, 'title': title, 'content': content, 'thumbnail': thumbnail})
         seen_results.add((url, template))
