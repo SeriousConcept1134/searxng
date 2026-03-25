@@ -48,7 +48,7 @@ The following commits required manual intervention to preserve fork-specific enh
     *   **Adopted**: Resolved all conflicts in `google.py` in favor of the upstream commit's version to maintain compatibility with the new Android User Agent layout.
 
 ### [fix] google engine - don't set __Secure-ENID in the HTTP header (`c4f51aa`)
-*   **Local Hash**: `181b30824`
+*   **Local Hash**: `c96bbfc8a`
 *   **Resolution**:
     *   **Manual Application**: The header was surgically removed from our refactored `google.py` implementation.
     *   **Adopted**: Upstream's optimization to remove the redundant `__Secure-ENID` header, as the Android GSA parsing logic only requires the User-Agent.
