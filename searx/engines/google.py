@@ -16,6 +16,7 @@ import re
 import string
 import time
 import typing as t
+import json
 from urllib.parse import unquote, urlencode
 
 import babel
@@ -34,6 +35,8 @@ from searx.utils import (
     extract_text,
     gen_gsa_useragent,
 )
+from searx.utils import get_embeded_stream_url
+from searx import logger
 
 if t.TYPE_CHECKING:
     from searx.extended_types import SXNG_Response
@@ -71,7 +74,6 @@ filter_mapping = {0: "off", 1: "medium", 2: "high"}
 # from the links not the links itself.
 suggestion_xpath = '//div[contains(@class, "gGQDvd iIWm4b")]//a'
 
-
 _arcid_range = string.ascii_letters + string.digits + "_-"
 _arcid_random: tuple[str, int] | None = None
 
@@ -84,7 +86,6 @@ def ui_async(start: int) -> str:
     The arc_id is random generated every hour.
     """
     global _arcid_random  # pylint: disable=global-statement
-
     use_ac = "use_ac:true"
     # _fmt:html returns a HTTP 500 when user search for celebrities like
     # '!google natasha allegri' or '!google chris evans'
@@ -94,8 +95,11 @@ def ui_async(start: int) -> str:
     if not _arcid_random or (int(time.time()) - _arcid_random[1]) > 3600:
         _arcid_random = ("".join(random.choices(_arcid_range, k=23)), int(time.time()))
     arc_id = f"arc_id:srp_{_arcid_random[0]}_1{start:02}"
-
     return ",".join([arc_id, use_ac, _fmt])
+
+
+# traits
+traits = None
 
 
 def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[str, t.Any]:
@@ -152,15 +156,9 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
             - ``Accept: '*/*``
 
     """
-
     ret_val: dict[str, t.Any] = {
-        "language": None,
-        "country": None,
-        "subdomain": None,
-        "params": {},
-        "headers": {},
-        "cookies": {},
-        "locale": None,
+        "language": None, "country": None, "subdomain": None, "params": {},
+        "headers": {}, "cookies": {}, "locale": None,
     }
 
     sxng_locale = params.get("searxng_locale", "all")
@@ -170,7 +168,7 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
         locale = None
 
     eng_lang = eng_traits.get_language(sxng_locale, "lang_en")
-    lang_code = eng_lang.split("_")[-1]  # lang_zh-TW --> zh-TW / lang_en --> en
+    lang_code = eng_lang.split("_")[-1]
     country = eng_traits.get_region(sxng_locale, eng_traits.all_locale)
 
     # Test zh_hans & zh_hant --> in the topmost links in the result list of list
@@ -212,9 +210,7 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
     # By example: &lr=lang_zh-TW%7Clang_de selects articles written in
     # traditional chinese OR german language.
 
-    ret_val["params"]["lr"] = eng_lang
-    if sxng_locale == "all":
-        ret_val["params"]["lr"] = ""
+    ret_val["params"]["lr"] = eng_lang if sxng_locale != "all" else ""
 
     # cr parameter:
     #   The cr parameter restricts search results to documents originating in a
@@ -223,9 +219,7 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
 
     # specify a region (country) only if a region is given in the selected
     # locale --> https://github.com/searxng/searxng/issues/2672
-    ret_val["params"]["cr"] = ""
-    if len(sxng_locale.split("-")) > 1:
-        ret_val["params"]["cr"] = "country" + country
+    ret_val["params"]["cr"] = "country" + country if len(sxng_locale.split("-")) > 1 else ""
 
     # gl parameter: (mandatory by Google News)
     #   The gl parameter value is a two-letter country code. For WebSearch
@@ -269,8 +263,7 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
     ret_val["headers"]["Accept"] = "*/*"
     ret_val["headers"]["User-Agent"] = gen_gsa_useragent()
 
-    # Hardcoded default ENID Header required alongside the Android Google App
-    # User Agent
+    # Hardcoded default ENID Header required alongside the Android Google App UA
     ret_val["headers"]["__Secure-ENID"] = (
         "28.SE=II9FMkz92GewodDwKRBFsMISph7GsQs8JYLdXmAlprl6UcC02O2p7kfQlAWuwT"
         "oygcrqHpmwQSH57b0c2kXfRfo35J8aV5FYSeUzYB67hqZQ2tZB7-o0hlTKwb5qMjn8Cf"
@@ -283,7 +276,6 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
     # - https://github.com/searxng/searxng/pull/1679#issuecomment-1235432746
     # - https://github.com/searxng/searxng/issues/1555
     ret_val["cookies"]["CONSENT"] = "YES+"
-
     return ret_val
 
 
@@ -294,158 +286,219 @@ def detect_google_sorry(resp):
 
 def request(query: str, params: "OnlineParams") -> None:
     """Google search request"""
-    # pylint: disable=line-too-long
     start = (params["pageno"] - 1) * 10
     google_info = get_google_info(params, traits)
 
-    # https://www.google.de/search?q=corona&hl=de&lr=lang_de&start=0&tbs=qdr%3Ad&safe=medium
     query_url = (
-        "https://"
-        + google_info["subdomain"]
-        + "/search"
-        + "?"
-        + urlencode(
-            {
-                "q": query,
-                **google_info["params"],
-                "filter": "0",
-                "start": start,
-                # 'vet': '12ahUKEwik3ZbIzfn7AhXMX_EDHbUDBh0QxK8CegQIARAC..i',
-                # 'ved': '2ahUKEwik3ZbIzfn7AhXMX_EDHbUDBh0Q_skCegQIARAG',
-                # 'cs' : 1,
-                # 'sa': 'N',
-                # 'yv': 3,
-                # 'prmd': 'vin',
-                # 'ei': 'GASaY6TxOcy_xc8PtYeY6AE',
-                # 'sa': 'N',
-                # 'sstk': 'AcOHfVkD7sWCSAheZi-0tx_09XDO55gTWY0JNq3_V26cNN-c8lfD45aZYPI8s_Bqp8s57AHz5pxchDtAGCA_cikAWSjy9kw3kgg'
-                # formally known as use_mobile_ui
-                # "asearch": "arc",
-                # "async": str_async,
-            }
-        )
+        "https://" + google_info["subdomain"] + "/search?" + urlencode({
+            "q": query, **google_info["params"], "filter": "0", "start": start,
+            "source": "lnms", "aep": "1",
+            "biw": "400", "bih": "700",
+        })
     )
 
     if params["time_range"] in time_range_dict:
         query_url += "&" + urlencode({"tbs": "qdr:" + time_range_dict[params["time_range"]]})
     if params["safesearch"]:
         query_url += "&" + urlencode({"safe": filter_mapping[params["safesearch"]]})
+    
     params["url"] = query_url
-
     params["cookies"] = google_info["cookies"]
     params["headers"].update(google_info["headers"])
 
 
-# regex match to get image map that is found inside the returned javascript:
-# (function(){var s='...';var i=['...'] ...}
-RE_DATA_IMAGE = re.compile(r"(data:image[^']*?)'[^']*?'((?:dimg|pimg|tsuid)[^']*)")
-
-
-def parse_url_images(text: str):
+def parse_data_images(text: str):
+    """Extract all image mapping from the page."""
     data_image_map = {}
+    
+    # 1. Broad JSON mapping search (ldi, pim, etc.)
+    for match in re.finditer(r'google\.[a-z]+\s*=\s*({.*?});', text, re.DOTALL):
+        try:
+            data_image_map.update(json.loads(match.group(1)))
+        except: pass
 
-    for image_url, img_id in RE_DATA_IMAGE.findall(text):
-        data_image_map[img_id] = image_url.encode('utf-8').decode("unicode-escape")
-    logger.debug("data:image objects --> %s", list(data_image_map.keys()))
+    # 2. Extract assignments like s='data:...'; ii=['dimg_...'];
+    for m in re.finditer(r"s='(data:[^']+|https?://[^']+)';\s*(?:var\s+)?ii=\['([^']+)'\];", text):
+        data_image_map[m.group(2)] = m.group(1)
+    for m in re.finditer(r"(?:var\s+)?ii=\['([^']+)'\];\s*s='(data:[^']+|https?://[^']+)';", text):
+        data_image_map[m.group(1)] = m.group(2)
+        
+    # 3. Modern GSA explicit calls
+    for m in re.finditer(r"_setImageSrc\('([^']+)'\s*,\s*'([^']+)'\)", text):
+        data_image_map[m.group(1)] = m.group(2)
+    # Aggressive _setImagesSrc(ii,s) handler
+    for m in re.finditer(r"ii=\['([^']+)'\];\s*_setImagesSrc\(ii,s\);", text):
+        s_match = list(re.finditer(r"s='([^']+)'", text[:m.start()]))
+        if s_match: data_image_map[m.group(1)] = s_match[-1].group(1)
+
+    # 4. Global variable mapping (var s='...'; var ii=['...'])
+    for m in re.finditer(r"var s='([^']+)';\s*var ii=\['([^']+)'\];", text):
+        data_image_map[m.group(2)] = m.group(1)
+    for m in re.finditer(r"var ii=\['([^']+)'\];\s*var s='([^']+)';", text):
+        data_image_map[m.group(1)] = m.group(2)
+
+    # 5. Extract all dimg_ IDs and their data from any script text
+    for m in re.finditer(r'["\'](dimg_[^"\']+)["\']\s*:\s*["\'](data:[^"\']+|https?://[^"\']+)["\']', text):
+        data_image_map[m.group(1)] = m.group(2)
+
+    # Final Cleanup
+    for img_id, val in data_image_map.items():
+        if not isinstance(val, str): continue
+        if '\\x' in val:
+            try: val = val.encode('utf-8').decode('unicode-escape')
+            except: pass
+        val = val.replace('\\/', '/').replace('\\u003d', '=').replace('\\u0026', '&')
+        val = val.rstrip('\\')
+        data_image_map[img_id] = val
     return data_image_map
+
+
+def extract_descriptions(text: str):
+    """Extract descriptions from script tags."""
+    descriptions = {}
+    for match in re.finditer(r'\["([^"\[\]]{5,})","([^"\[\]]{10,})"', text):
+        title, desc = match.groups()
+        try:
+            title_decoded = json.loads(f'"{title}"')
+            desc_decoded = json.loads(f'"{desc}"').replace('\\n', ' ')
+            descriptions[title_decoded] = desc_decoded
+        except: descriptions[title] = desc
+    return descriptions
+
+
+def parse_layout_1(dom, text, data_image_map, script_descriptions):
+    """Parser for Layout 1 (Modern Android Layout)"""
+    results = []
+    seen_results = set() # Store (url, template)
+    
+    # 1. Videos (STABLE VERSION PRESERVED)
+    v_candidates = dom.xpath('//div[contains(@class, "WVV5ke")] | //div[contains(@class, "xT1K2d") and .//a[contains(@href, "youtube.com") or contains(@href, "vimeo.com")]]')
+    if not v_candidates:
+        v_candidates = dom.xpath('//div[@role="heading" and contains(text(), "Video")]/following-sibling::div//a[contains(@href, "youtube.com")]/ancestor::div[1]')
+
+    for v in v_candidates:
+        title = v.get('data-title') or extract_text(v.xpath('.//*[@role="heading"]'))
+        url = v.get('data-surl') or v.get('data-curl') or extract_text(v.xpath('.//a[contains(@href, "youtube.com") or contains(@href, "vimeo.com")]/@href'))
+        if url and url.startswith('/url?q='): url = unquote(url[7:].split('&sa=U')[0])
+        
+        template = 'videos.html'
+        if title and url and (url, template) not in seen_results:
+            content = extract_text(v.xpath('.//div[contains(@class, "vqseUe") or contains(@class, "vwPXuf")]')) or script_descriptions.get(title, "")
+            
+            img_node = eval_xpath_getindex(v, './/img', 0, default=None)
+            img_id = img_node.get("id") if img_node is not None else None
+            thumbnail = data_image_map.get(img_id)
+            if not thumbnail and img_id:
+                for k, val in data_image_map.items():
+                    if k.endswith(img_id): thumbnail = val; break
+            
+            if (not thumbnail) and v.get('data-vid'):
+                thumbnail = f"https://img.youtube.com/vi/{v.get('data-vid')}/hqdefault.jpg"
+            
+            duration = extract_text(v.xpath('.//div[contains(@class, "c8rnLc")]//span'))
+            if not duration:
+                aria = extract_text(v.xpath('.//@aria-label'))
+                d_match = re.search(r'(\d+:\d+)', aria)
+                if d_match: duration = d_match.group(1)
+
+            res = {'url': url, 'title': title, 'content': content, 'thumbnail': thumbnail, 'template': template}
+            if duration: res['length'] = duration
+            
+            if 'youtube.com' in url or 'youtu.be' in url:
+                vid_match = re.search(r'(?:v=|/)([0-9A-Za-z_-]{11})', url)
+                if vid_match: res['iframe_src'] = f"https://www.youtube.com/embed/{vid_match.group(1)}"
+
+            results.append(res)
+            seen_results.add((url, template))
+
+    # 2. Reddit (Only first with description)
+    for r in dom.xpath('//div[contains(@class, "yD2vYc")]'):
+        if r.xpath('./ancestor::div[contains(@class, "WVV5ke") or contains(@class, "xT1K2d")]'):
+            continue
+            
+        content = extract_text(r.xpath('.//div[contains(@class, "vqseUe")]'))
+        if content:
+            title = extract_text(r.xpath('.//*[@role="heading"]'))
+            url = extract_text(r.xpath('.//a/@href'))
+            if url and url.startswith('/url?q='): url = unquote(url[7:].split('&sa=U')[0])
+            template = None
+            if title and url and (url, template) not in seen_results:
+                img_node = eval_xpath_getindex(r, './/img', 0, default=None)
+                img_id = img_node.get("id") if img_node is not None else None
+                thumbnail = data_image_map.get(img_id)
+                if not thumbnail and img_id:
+                    for k, val in data_image_map.items():
+                        if k.endswith(img_id): thumbnail = val; break
+                results.append({'url': url, 'title': title, 'content': content, 'thumbnail': thumbnail})
+                seen_results.add((url, template))
+                break
+
+    # 3. Merriam-Webster
+    for mw in dom.xpath('//div[contains(@class, "b8PhZd")]'):
+        headings = mw.xpath('.//*[@role="heading"]')
+        if headings:
+            title = extract_text(headings[0])
+            url = extract_text(mw.xpath('.//a/@href'))
+            if url and url.startswith('/url?q='): url = unquote(url[7:].split('&sa=U')[0])
+            template = None
+            if title and url and (url, template) not in seen_results:
+                content = extract_text(mw.xpath('.//div[contains(@class, "VwiC3b") or contains(@class, "yXK7lf")]'))
+                results.append({'url': url, 'title': title, 'content': content})
+                seen_results.add((url, template))
+
+    # 4. Standard Web Results (IMAGES WIDGET REMOVED)
+    for sw in dom.xpath('//div[contains(@class, "N54PNb")] | //div[contains(@class, "kb0PBd")]'):
+        if sw.xpath('./ancestor::div[contains(@class, "WVV5ke") or contains(@class, "yD2vYc") or contains(@class, "b8PhZd") or @data-attrid="images universal" or contains(@class, "xT1K2d")]'):
+            continue
+            
+        headings = sw.xpath('.//*[@role="heading"]')
+        if not headings: continue
+        title = extract_text(headings[0])
+        if title in ["AI Overview", "People also ask", "Places", "Videos", "Images", "People also search for", "Web results"]:
+            continue
+            
+        links = sw.xpath('./ancestor::a/@href') or sw.xpath('.//a/@href')
+        if not links: continue
+        url = links[0]
+        if url.startswith('/url?q='): url = unquote(url[7:].split('&sa=U')[0])
+        if 'google.com/' in url and '/search' in url: continue
+        
+        template = None
+        if (url, template) in seen_results: continue
+
+        content = script_descriptions.get(title, "")
+        if not content:
+            desc_node = sw.xpath('.//div[contains(@class, "VwiC3b") or contains(@class, "yXK7lf")]')
+            content = extract_text(desc_node[0]) if desc_node else ""
+        
+        img_node = eval_xpath_getindex(sw, './/img', 0, default=None)
+        img_id = img_node.get("id") if img_node is not None else None
+        thumbnail = data_image_map.get(img_id)
+        if not thumbnail and img_id:
+            for k, val in data_image_map.items():
+                if k.endswith(img_id): thumbnail = val; break
+        results.append({'url': url, 'title': title, 'content': content, 'thumbnail': thumbnail})
+        seen_results.add((url, template))
+
+    return results
 
 
 def response(resp: "SXNG_Response"):
     """Get response from google's search request"""
-    # pylint: disable=too-many-branches, too-many-statements
     detect_google_sorry(resp)
-    data_image_map = parse_url_images(resp.text)
-
-    results = EngineResults()
-
-    # convert the text to dom
+    data_image_map = parse_data_images(resp.text)
+    script_descriptions = extract_descriptions(resp.text)
     dom = html.fromstring(resp.text)
 
-    # parse results
-    for result in eval_xpath_list(dom, '//a[@data-ved and not(@class)]'):
-        # pylint: disable=too-many-nested-blocks
+    results = EngineResults()
+    for s in dom.xpath('//a[@data-l1]'):
+        l1, l2 = s.get("data-l1"), s.get("data-l2")
+        text = f"{l1} {l2}" if l2 else l1
+        if text and not any(r.get('suggestion') == text for r in results):
+            results.append({'suggestion': text})
 
-        try:
-            title_tag = eval_xpath_getindex(result, './/div[@style]', 0, default=None)
-            if title_tag is None:
-                # this not one of the common google results *section*
-                logger.debug("ignoring item from the result_xpath list: missing title")
-                continue
-            title = extract_text(title_tag)
-
-            raw_url = result.get("href")
-            if raw_url is None:
-                logger.debug(
-                    'ignoring item from the result_xpath list: missing url of title "%s"',
-                    title,
-                )
-                continue
-
-            if raw_url.startswith('/url?q='):
-                url = unquote(raw_url[7:].split("&sa=U")[0])  # remove the google redirector
-            else:
-                url = raw_url
-
-            content_nodes = eval_xpath(result, '../..//div[contains(@class, "ilUpNd H66NU aSRlid")]')
-            for item in content_nodes:
-                for script in item.xpath(".//script"):
-                    script.getparent().remove(script)
-
-            content = extract_text(content_nodes[0])
-
-            # Images that are NOT the favicon
-            xpath_image = eval_xpath_getindex(result, './/img', index=0, default=None)
-
-            thumbnail = None
-            if xpath_image is not None:
-                thumbnail = xpath_image.get("src")
-                if thumbnail.startswith("data:image"):
-                    img_id = xpath_image.get("id")
-                    if img_id:
-                        thumbnail = data_image_map.get(img_id)
-
-            results.append({"url": url, "title": title, "content": content or '', "thumbnail": thumbnail})
-
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error(e, exc_info=True)
-            continue
-
-    # parse suggestion
-    for suggestion in eval_xpath_list(dom, suggestion_xpath):
-        # append suggestion
-        results.append({"suggestion": extract_text(suggestion)})
-
-    # return results
+    results.extend(parse_layout_1(dom, resp.text, data_image_map, script_descriptions))
     return results
-
-
-# get supported languages from their site
-
-
-skip_countries = [
-    # official language of google-country not in google-languages
-    "AL",  # Albanien (sq)
-    "AZ",  # Aserbaidschan  (az)
-    "BD",  # Bangladesch (bn)
-    "BN",  # Brunei Darussalam (ms)
-    "BT",  # Bhutan (dz)
-    "ET",  # Äthiopien (am)
-    "GE",  # Georgien (ka, os)
-    "GL",  # Grönland (kl)
-    "KH",  # Kambodscha (km)
-    "LA",  # Laos (lo)
-    "LK",  # Sri Lanka (si, ta)
-    "ME",  # Montenegro (sr)
-    "MK",  # Nordmazedonien (mk, sq)
-    "MM",  # Myanmar (my)
-    "MN",  # Mongolei (mn)
-    "MV",  # Malediven (dv) // dv_MV is unknown by babel
-    "MY",  # Malaysia (ms)
-    "NP",  # Nepal (ne)
-    "TJ",  # Tadschikistan (tg)
-    "TM",  # Turkmenistan (tk)
-    "UZ",  # Usbekistan (uz)
-]
 
 
 def fetch_traits(engine_traits: EngineTraits, add_domains: bool = True):
@@ -525,3 +578,29 @@ def fetch_traits(engine_traits: EngineTraits, add_domains: bool = True):
             if region == "HK":
                 # There is no google.cn, we use .com.hk for zh-CN
                 engine_traits.custom["supported_domains"]["CN"] = "www" + domain
+
+
+skip_countries = [
+    # official language of google-country not in google-languages
+    "AL",  # Albanien (sq)
+    "AZ",  # Aserbaidschan  (az)
+    "BD",  # Bangladesch (bn)
+    "BN",  # Brunei Darussalam (ms)
+    "BT",  # Bhutan (dz)
+    "ET",  # Äthiopien (am)
+    "GE",  # Georgien (ka, os)
+    "GL",  # Grönland (kl)
+    "KH",  # Kambodscha (km)
+    "LA",  # Laos (lo)
+    "LK",  # Sri Lanka (si, ta)
+    "ME",  # Montenegro (sr)
+    "MK",  # Nordmazedonien (mk, sq)
+    "MM",  # Myanmar (my)
+    "MN",  # Mongolei (mn)
+    "MV",  # Malediven (dv) // dv_MV is unknown by babel
+    "MY",  # Malaysia (ms)
+    "NP",  # Nepal (ne)
+    "TJ",  # Tadschikistan (tg)
+    "TM",  # Turkmenistan (tk)
+    "UZ",  # Usbekistan (uz)
+]
