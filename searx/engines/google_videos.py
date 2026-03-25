@@ -174,8 +174,23 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
             url = unquote(url[7:].split('&sa=U')[0])
 
         content = script_descriptions.get(title, "")
+        
+        # Metadata parsing (Split Author and Date)
         metadata_div = eval_xpath_getindex(result, './/div[contains(@class, "WRu9Cd")]', 0, default=None)
-        pub_info = extract_text(metadata_div) if metadata_div is not None else None
+        pub_info = extract_text(metadata_div) if metadata_div is not None else ""
+        
+        author = None
+        metadata = []
+        if pub_info:
+            # Matches strings like "YouTube · Ginger Cat1 month ago" 
+            # or "YouTube · The Dodo2 days ago"
+            m = re.match(r'(.*?·\s*.*?)(\d+\s+\w+\s+ago|\d+\s+\w+\s+\d{4})', pub_info)
+            if m:
+                author, date_str = m.groups()
+                author = author.rstrip(' ·').strip()
+                metadata.append(date_str)
+            else:
+                author = pub_info
 
         thumbnail = yt_reconstruct_thumbnail(url) if url else None
         if not thumbnail:
@@ -197,9 +212,10 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
         if title and url:
             results.append({
                 'url': url, 'title': title, 'content': content or '',
-                'author': pub_info, 'thumbnail': thumbnail, 'length': duration,
+                'author': author, 'thumbnail': thumbnail, 'length': duration,
                 'iframe_src': get_embeded_stream_url(url) if url else None,
                 'template': 'videos.html',
+                'metadata': " | ".join(metadata) if metadata else None,
             })
     return results
 
@@ -232,17 +248,18 @@ def parse_layout_2(dom, text, data_image_map, script_descriptions):
 
         # 4. Metadata (Duration, Posted)
         duration = None
-        published_date = None
+        metadata = []
         metadata_text = extract_text(result)
         
         dur_match = re.search(r'Duration:\s*(\d+:\d+)', metadata_text)
         if dur_match:
             duration = dur_match.group(1)
         
-        # Capture date while avoiding duplicate post info
+        # Capture date as generic metadata
         post_match = re.search(r'Posted:\s*([^<]+)', metadata_text)
         if post_match:
-            published_date = post_match.group(1).split('\n')[0].strip()
+            date_str = post_match.group(1).split('\n')[0].strip()
+            metadata.append(date_str)
 
         # 5. Thumbnail
         thumbnail = yt_reconstruct_thumbnail(url) if url else None
@@ -263,11 +280,11 @@ def parse_layout_2(dom, text, data_image_map, script_descriptions):
                 'title': title,
                 'content': content or '',
                 'author': None,  # Layout 2 doesn't provide author
-                'publishedDate': published_date,
                 'thumbnail': thumbnail,
                 'length': duration,
                 'iframe_src': get_embeded_stream_url(url) if url else None,
                 'template': 'videos.html',
+                'metadata': " | ".join(metadata) if metadata else None,
             })
     return results
 
