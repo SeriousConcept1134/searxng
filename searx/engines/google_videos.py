@@ -61,27 +61,21 @@ def parse_data_images(text: str):
     """Extract all image ID to URL/Data mapping from the page."""
     data_image_map = {}
 
-    # 1. Bulk extraction from google.ldi = {...} (Mechanism B)
-    # This is usually for the bottom half of the results.
+    # Bulk extraction from google.ldi = {...}
     ldi_match = re.search(r'google\.ldi\s*=\s*({.*?});', text, re.DOTALL)
     if ldi_match:
         try:
-            # We use json.loads which handles the unicode escaping correctly.
             data_image_map.update(json.loads(ldi_match.group(1)))
         except Exception:  # pylint: disable=broad-except
             pass
 
-    # 2. Individual extraction from _setImagesSrc calls (Mechanism A)
-    # This covers both 'var ii=...; var s=...' and 'var s=...; var ii=...' patterns.
-    # Pattern 1: var ii=['ID'];var s='DATA';
+    # Individual extraction from _setImagesSrc calls (Both patterns)
     for m in re.finditer(r"var ii=\['(dimg_[^']+)'\];var s='([^']+)';", text):
         data_image_map[m.group(1)] = m.group(2)
-    # Pattern 2: var s='DATA';var ii=['ID'];
     for m in re.finditer(r"var s='([^']+)';var ii=\['(dimg_[^']+)'\];", text):
         data_image_map[m.group(2)] = m.group(1)
 
-    # 3. Post-process ONLY the strings from regex (Mechanism A) to fix hex escapes.
-    # Bulk JSON strings (Mechanism B) are already decoded.
+    # Post-process strings to fix encoding and padding
     for img_id, val in data_image_map.items():
         if isinstance(val, str) and '\\x' in val:
             try:
@@ -89,7 +83,6 @@ def parse_data_images(text: str):
             except Exception:  # pylint: disable=broad-except
                 pass
         
-        # Standardize padding for base64
         if isinstance(val, str) and val.startswith("data:image"):
             end_pos = val.rfind("=")
             if end_pos > 0:
@@ -101,11 +94,9 @@ def parse_data_images(text: str):
 def extract_descriptions(text: str):
     """Extract descriptions from script tags using regex."""
     descriptions = {}
-    # We look for ["Title","Description",...
     for match in re.finditer(r'\["([^"\[\]]{5,})","([^"\[\]]{10,})"', text):
         title, desc = match.groups()
         try:
-            # json.loads handles unicode escapes like \u0026
             title_decoded = json.loads(f'"{title}"')
             desc_decoded = json.loads(f'"{desc}"').replace('\\n', ' ')
             descriptions[title_decoded] = desc_decoded
@@ -119,115 +110,173 @@ def request(query, params):
     google_info = get_google_info(params, traits)
     start = (params['pageno'] - 1) * 10
 
-    query_url = (
-        'https://'
-        + google_info['subdomain']
-        + '/search'
-        + "?"
-        + urlencode(
-            {
-                'q': query,
-                'tbm': "vid",
-                'udm': '7',
-                'start': start,
-                **google_info['params'],
-            }
-        )
-    )
+    # Base parameters
+    query_params = {
+        'q': query,
+        'tbm': "vid",
+        'start': start,
+        **google_info['params'],
+    }
+
+    # If it is a known GSA (Google App) User-Agent, we use Heirloom SRP parameters
+    # to try and bypass JS redirects while maintaining Layout 2 structure.
+    ua = params['headers'].get('User-Agent', '')
+    if 'KFKAWI' in ua:
+        query_params['aqs'] = 'heirloom-srp'
+    else:
+        # Layout 1 (Standard Modern GSA) uses udm=7
+        query_params['udm'] = '7'
+
+    query_url = 'https://' + google_info['subdomain'] + '/search?' + urlencode(query_params)
 
     if params['time_range'] in time_range_dict:
         query_url += '&' + urlencode({'tbs': 'qdr:' + time_range_dict[params['time_range']]})
     if 'safesearch' in params:
         query_url += '&' + urlencode({'safe': filter_mapping[params['safesearch']]})
+    
     params['url'] = query_url
-
     params['cookies'] = google_info['cookies']
     params['headers'].update(google_info['headers'])
     return params
+
+
+def parse_layout_1(dom, text, data_image_map, script_descriptions):
+    """Parser for Layout 1 (Modern Android App Layout)"""
+    results = []
+    # Identified by jsname="pKB8Bc" containers
+    result_divs = eval_xpath_list(dom, '//div[@jsname="pKB8Bc"]')
+
+    for result in result_divs:
+        title_node = eval_xpath_getindex(result, './/*[@role="heading"]', 0, default=None)
+        title = extract_text(title_node, allow_none=True)
+        if not title:
+            continue
+
+        video_data_node = eval_xpath_getindex(result, './/div[contains(@class, "WVV5ke")]', 0, default=None)
+        url = None
+        video_id = None
+        if video_data_node is not None:
+            url = video_data_node.get("data-surl") or video_data_node.get("data-curl")
+            video_id = video_data_node.get("data-vid")
+
+        if not url:
+            url = eval_xpath_getindex(result, './/a/@href', 0, default=None)
+        if url and url.startswith('/url?q='):
+            url = unquote(url[7:].split('&sa=U')[0])
+
+        content = script_descriptions.get(title, "")
+        metadata_div = eval_xpath_getindex(result, './/div[contains(@class, "WRu9Cd")]', 0, default=None)
+        pub_info = extract_text(metadata_div) if metadata_div is not None else None
+
+        thumbnail = None
+        img_node = eval_xpath_getindex(result, './/*[contains(@class, "rIRoqf")]//img', 0, default=None)
+        if img_node is not None:
+            img_id = img_node.get("id")
+            if img_id and img_id in data_image_map:
+                thumbnail = data_image_map[img_id]
+            else:
+                thumbnail = img_node.get("src")
+                if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
+                    thumbnail = img_node.get("data-src") or thumbnail
+
+        if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail) and video_id:
+            thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+
+        duration = extract_text(eval_xpath_getindex(result, './/span[contains(@class, "k1U36b")]', 0, default=None), allow_none=True)
+
+        if title and url:
+            results.append({
+                'url': url, 'title': title, 'content': content or '',
+                'author': pub_info, 'thumbnail': thumbnail, 'length': duration,
+                'iframe_src': get_embeded_stream_url(url) if url else None,
+                'template': 'videos.html',
+            })
+    return results
+
+
+def parse_layout_2(dom, text, data_image_map, script_descriptions):
+    """Parser for Layout 2 (KFKAWI / Heirloom Android Layout)"""
+    results = []
+    # Identified by Gx5Zad containers
+    result_divs = eval_xpath_list(dom, '//div[contains(@class, "Gx5Zad")]')
+
+    for result in result_divs:
+        # 1. Title (typically in <h3>)
+        title_node = eval_xpath_getindex(result, './/h3', 0, default=None)
+        title = extract_text(title_node, allow_none=True)
+        if not title:
+            continue
+
+        # 2. URL
+        url = eval_xpath_getindex(result, './/a/@href', 0, default=None)
+        if url and url.startswith('/url?q='):
+            url = unquote(url[7:].split('&sa=U')[0])
+
+        # 3. Content (Description)
+        content = script_descriptions.get(title, "")
+        if not content:
+            # Fallback to description div
+            desc_nodes = result.xpath('.//div[contains(@class, "kCrYT")]/div/div[string-length(text()) > 10]')
+            if desc_nodes:
+                content = extract_text(desc_nodes[0])
+
+        # 4. Metadata (Duration, Posted)
+        duration = None
+        published_date = None
+        metadata_text = extract_text(result)
+        
+        dur_match = re.search(r'Duration:\s*(\d+:\d+)', metadata_text)
+        if dur_match:
+            duration = dur_match.group(1)
+        
+        # Capture date while avoiding duplicate post info
+        post_match = re.search(r'Posted:\s*([^<]+)', metadata_text)
+        if post_match:
+            published_date = post_match.group(1).split('\n')[0].strip()
+
+        # 5. Thumbnail
+        thumbnail = None
+        img_node = eval_xpath_getindex(result, './/img', 0, default=None)
+        if img_node is not None:
+            img_id = img_node.get("id")
+            if img_id and img_id in data_image_map:
+                thumbnail = data_image_map[img_id]
+            else:
+                thumbnail = img_node.get("src")
+                if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
+                    thumbnail = img_node.get("data-src") or thumbnail
+
+        if title and url:
+            results.append({
+                'url': url,
+                'title': title,
+                'content': content or '',
+                'author': None,  # Layout 2 doesn't provide author
+                'publishedDate': published_date,
+                'thumbnail': thumbnail,
+                'length': duration,
+                'iframe_src': get_embeded_stream_url(url) if url else None,
+                'template': 'videos.html',
+            })
+    return results
 
 
 def response(resp):
     """Get response from google's search request"""
     detect_google_sorry(resp)
 
-    results = []
     data_image_map = parse_data_images(resp.text)
     script_descriptions = extract_descriptions(resp.text)
     dom = html.fromstring(resp.text)
 
-    # Result container identified as div[@jsname="pKB8Bc"] (Stable outer anchor)
-    result_divs = eval_xpath_list(dom, '//div[@jsname="pKB8Bc"]')
-
-    for result in result_divs:
-        # 1. Title extraction (role="heading")
-        title_node = eval_xpath_getindex(result, './/*[@role="heading"]', 0, default=None)
-        title = extract_text(title_node, allow_none=True)
-
-        if not title:
-            continue
-
-        # 2. URL extraction (WVV5ke container or fallback to <a>)
-        url = None
-        video_data_node = eval_xpath_getindex(result, './/div[contains(@class, "WVV5ke")]', 0, default=None)
-        if video_data_node is not None:
-            url = video_data_node.get("data-surl") or video_data_node.get("data-curl")
-            video_id = video_data_node.get("data-vid")
-        else:
-            video_id = None
-
-        if not url:
-            url = eval_xpath_getindex(result, './/a/@href', 0, default=None)
-
-        if url and url.startswith('/url?q='):
-            url = unquote(url[7:].split('&sa=U')[0])
-
-        # 3. Content (Description) from script map
-        content = script_descriptions.get(title, "")
-
-        # 4. Metadata (Website, Date)
-        metadata_div = eval_xpath_getindex(result, './/div[contains(@class, "WRu9Cd")]', 0, default=None)
-        pub_info = None
-        if metadata_div is not None:
-            pub_info = extract_text(metadata_div)
-
-        # 5. Thumbnail Extraction (Structural Nesting)
-        # We look for an <img> descendant of the interaction element (rIRoqf)
-        thumbnail = None
-        img_node = eval_xpath_getindex(result, './/*[contains(@class, "rIRoqf")]//img', 0, default=None)
-        
-        if img_node is not None:
-            img_id = img_node.get("id")
-            # Preference 1: The high-resolution mapping from the page scripts
-            if img_id and img_id in data_image_map:
-                thumbnail = data_image_map[img_id]
-            else:
-                # Preference 2: Direct source from DOM (could be base64 or lazy URL)
-                thumbnail = img_node.get("src")
-                # Handle placeholders
-                if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
-                    thumbnail = img_node.get("data-src") or thumbnail
-
-        # Preference 3: YouTube fallback
-        if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail) and video_id:
-            thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
-
-        # Duration
-        duration = extract_text(
-            eval_xpath_getindex(result, './/span[contains(@class, "k1U36b")]', 0, default=None), allow_none=True
-        )
-
-        # Build final result
-        if title and url:
-            results.append({
-                'url': url,
-                'title': title,
-                'content': content or '',
-                'author': pub_info,
-                'thumbnail': thumbnail,
-                'length': duration,
-                'iframe_src': get_embeded_stream_url(url) if url else None,
-                'template': 'videos.html',
-            })
+    # Layout Fingerprinting
+    if eval_xpath_list(dom, '//div[@jsname="pKB8Bc"]'):
+        results = parse_layout_1(dom, resp.text, data_image_map, script_descriptions)
+    elif eval_xpath_list(dom, '//div[contains(@class, "Gx5Zad")]'):
+        results = parse_layout_2(dom, resp.text, data_image_map, script_descriptions)
+    else:
+        # Fallback
+        results = parse_layout_1(dom, resp.text, data_image_map, script_descriptions)
 
     # Suggestions
     for suggestion in eval_xpath_list(dom, suggestion_xpath):
