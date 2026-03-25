@@ -144,7 +144,7 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
               a particular language.
             - ``cr`` parameter: restricts search results to documents
               originating in a particular country.
-            - ``ie`` parameter: sets the character encoding scheme that should
+            - ``ie parameter: sets the character encoding scheme that should
               be used to interpret the query string ('utf8').
             - ``oe`` parameter: sets the character encoding scheme that should
               be used to decode the XML result ('utf8').
@@ -300,38 +300,31 @@ def request(query: str, params: "OnlineParams") -> None:
 
 
 def parse_data_images(text: str):
-    """Extract all image mapping from the page."""
+    """Extract all image mapping from the page efficiently."""
     data_image_map = {}
     
-    # 1. Broad JSON mapping search (ldi, pim, etc.)
-    for match in re.finditer(r'google\.[a-z]+\s*=\s*({.*?});', text, re.DOTALL):
-        try:
-            data_image_map.update(json.loads(match.group(1)))
-        except: pass
-
-    # 2. Extract assignments like s='data:...'; ii=['dimg_...'];
-    for m in re.finditer(r"s='(data:[^']+|https?://[^']+)';\s*(?:var\s+)?ii=\['([^']+)'\];", text):
-        data_image_map[m.group(2)] = m.group(1)
-    for m in re.finditer(r"(?:var\s+)?ii=\['([^']+)'\];\s*s='(data:[^']+|https?://[^']+)';", text):
-        data_image_map[m.group(1)] = m.group(2)
+    # Extract only from script tags to avoid expensive whole-page regex
+    for script in re.finditer(r'<script[^>]*>(.*?)</script>', text, re.DOTALL):
+        script_text = script.group(1)
         
-    # 3. Modern GSA explicit calls
-    for m in re.finditer(r"_setImageSrc\('([^']+)'\s*,\s*'([^']+)'\)", text):
-        data_image_map[m.group(1)] = m.group(2)
-    # Aggressive _setImagesSrc(ii,s) handler
-    for m in re.finditer(r"ii=\['([^']+)'\];\s*_setImagesSrc\(ii,s\);", text):
-        s_match = list(re.finditer(r"s='([^']+)'", text[:m.start()]))
-        if s_match: data_image_map[m.group(1)] = s_match[-1].group(1)
+        # 1. Broad mapping search (ldi, pim, etc.) - support dimg/pimg/tsuid prefixes
+        for m in re.finditer(r'["\']?((?:dimg|pimg|tsuid)_[^"\':\s]+)["\']?\s*:\s*["\']([^"\']+)["\']', script_text):
+            data_image_map[m.group(1)] = m.group(2)
 
-    # 4. Global variable mapping (var s='...'; var ii=['...'])
-    for m in re.finditer(r"var s='([^']+)';\s*var ii=\['([^']+)'\];", text):
-        data_image_map[m.group(2)] = m.group(1)
-    for m in re.finditer(r"var ii=\['([^']+)'\];\s*var s='([^']+)';", text):
-        data_image_map[m.group(1)] = m.group(2)
-
-    # 5. Extract all dimg_ IDs and their data from any script text
-    for m in re.finditer(r'["\'](dimg_[^"\']+)["\']\s*:\s*["\'](data:[^"\']+|https?://[^"\']+)["\']', text):
-        data_image_map[m.group(1)] = m.group(2)
+        # 2. Extract assignments like s='data:...'; ii=['dimg_...'];
+        for m in re.finditer(r"s='(data:[^']+|https?://[^']+)';\s*(?:var\s+)?ii=\['([^']+)'\];", script_text):
+            data_image_map[m.group(2)] = m.group(1)
+        for m in re.finditer(r"(?:var\s+)?ii=\['([^']+)'\];\s*s='(data:[^']+|https?://[^']+)';", script_text):
+            data_image_map[m.group(1)] = m.group(2)
+            
+        # 3. Modern GSA explicit calls
+        for m in re.finditer(r"_setImageSrc\('([^']+)'\s*,\s*'([^']+)'\)", script_text):
+            data_image_map[m.group(1)] = m.group(2)
+        
+        # 4. _setImagesSrc handler
+        for m in re.finditer(r"ii=\['([^']+)'\];\s*_setImagesSrc\(ii,s\);", script_text):
+            s_match = list(re.finditer(r"s='([^']+)'", script_text[:m.start()]))
+            if s_match: data_image_map[m.group(1)] = s_match[-1].group(1)
 
     # Final Cleanup
     for img_id, val in data_image_map.items():
@@ -341,6 +334,7 @@ def parse_data_images(text: str):
             except: pass
         val = val.replace('\\/', '/').replace('\\u003d', '=').replace('\\u0026', '&')
         val = val.rstrip('\\')
+        if val.startswith('//'): val = 'https:' + val
         data_image_map[img_id] = val
     return data_image_map
 
@@ -463,12 +457,37 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
             desc_node = sw.xpath('.//div[contains(@class, "VwiC3b") or contains(@class, "yXK7lf")]')
             content = extract_text(desc_node[0]) if desc_node else ""
         
-        img_node = eval_xpath_getindex(sw, './/img', 0, default=None)
-        img_id = img_node.get("id") if img_node is not None else None
-        thumbnail = data_image_map.get(img_id)
-        if not thumbnail and img_id:
-            for k, val in data_image_map.items():
-                if k.endswith(img_id): thumbnail = val; break
+        # Select main thumbnail (Single or Collage Large), avoiding favicons (XNo5Ab)
+        img_node = eval_xpath_getindex(sw, './/div[contains(@class, "LnCrMe")]//img | .//div[contains(@class, "HDbz4b")]//img', 0, default=None)
+        
+        # Fallback to any image that isn't a favicon if the specific containers aren't found
+        if img_node is None:
+            for img in sw.xpath('.//img[not(contains(@class, "XNo5Ab"))]'):
+                if img.get('id') or (img.get('width') and int(img.get('width')) > 30):
+                    img_node = img
+                    break
+
+        thumbnail = None
+        if img_node is not None:
+            # 1. Use mapping if ID exists
+            img_id = img_node.get("id")
+            thumbnail = data_image_map.get(img_id)
+            
+            # 2. Fallback to CSIID
+            if not thumbnail:
+                thumbnail = data_image_map.get(img_node.get("data-csiid"))
+            
+            # 3. Fallback to src if it's already a real URL
+            if not thumbnail:
+                src = img_node.get('src')
+                if src and src.startswith('http'):
+                    thumbnail = src
+            
+            # 4. Fallback to suffix match
+            if not thumbnail and img_id:
+                for k, val in data_image_map.items():
+                    if k.endswith(img_id): thumbnail = val; break
+        
         results.append({'url': url, 'title': title, 'content': content, 'thumbnail': thumbnail})
         seen_results.add((url, template))
 
