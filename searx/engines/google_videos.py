@@ -117,24 +117,26 @@ def yt_reconstruct_thumbnail(url: str) -> str | None:
 def request(query, params):
     """Google-Video search request"""
     google_info = get_google_info(params, traits)
-    start = (params['pageno'] - 1) * 10
+
+    # Remove standard Google parameters except for 'hl' (interface language)
+    # which is needed to maintain a consistent HTML layout for parsing.
+    for key in ['lr', 'cr', 'ie', 'oe']:
+        google_info['params'].pop(key, None)
 
     # Base parameters
     query_params = {
         'q': query,
-        'tbm': "vid",
-        'start': start,
+        'oq': query,
+        'udm': '7',
+        'tbm': 'vid',
+        'biw': '400',
+        'bih': '700',
+        'sclient': 'mobile-gws-modeless-video',
         **google_info['params'],
     }
 
-    # If it is a known GSA (Google App) User-Agent, we use Heirloom SRP parameters
-    # to try and bypass JS redirects while maintaining Layout 2 structure.
-    ua = params['headers'].get('User-Agent', '')
-    if 'KFKAWI' in ua:
-        query_params['aqs'] = 'heirloom-srp'
-    else:
-        # Layout 1 (Standard Modern GSA) uses udm=7
-        query_params['udm'] = '7'
+    if params['pageno'] > 1:
+        query_params['start'] = (params['pageno'] - 1) * 10
 
     query_url = 'https://' + google_info['subdomain'] + '/search?' + urlencode(query_params)
 
