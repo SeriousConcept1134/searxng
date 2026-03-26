@@ -2,7 +2,11 @@
 """Multi-paging logic for single-engine searches (specifically for videos)."""
 
 import typing as t
+import time
+import random
 from copy import deepcopy
+
+from searx import get_setting
 
 if t.TYPE_CHECKING:
     from searx.search.processors.online import OnlineProcessor, OnlineParams
@@ -106,6 +110,14 @@ def fetch_multiple_pages(
     loops = 0
 
     while current_count < target_count and loops < max_loops:
+        if get_setting('multipaging.speed_limit', True):
+            min_delay = get_setting('multipaging.min_delay', 500) / 1000.0
+            max_delay = get_setting('multipaging.max_delay', 1000) / 1000.0
+            delay = random.uniform(min_delay, max_delay) if max_delay > min_delay else min_delay
+
+            processor.logger.debug("Multipaging: sleeping for %.2fs before fetch", delay)
+            time.sleep(delay)
+
         loops += 1
         current_native_pageno += 1
 

@@ -213,6 +213,11 @@ SCHEMA: dict[str, t.Any] = {
         'video_grid_size': SettingsValue(int, 300),
         'image_grid_size': SettingsValue(int, 192),
     },
+    'multipaging': {
+        'speed_limit': SettingsValue(bool, True),
+        'min_delay': SettingsValue(int, 500),
+        'max_delay': SettingsValue(int, 1000),
+    },
     'server': {
         'port': SettingsValue((int, str), 8888, 'SEARXNG_PORT'),
         'bind_address': SettingsValue(str, '127.0.0.1', 'SEARXNG_BIND_ADDRESS'),

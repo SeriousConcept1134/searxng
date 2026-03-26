@@ -77,6 +77,11 @@ search:
   formats:
     - html
 
+# multipaging:
+  # speed_limit: true  # enable randomized delay between sub-page fetches
+  # min_delay: 500     # minimum delay in milliseconds
+  # max_delay: 1000    # maximum delay in milliseconds
+
 server:
   # Is overwritten by ${SEARXNG_PORT} and ${SEARXNG_BIND_ADDRESS}
   port: 8888
