@@ -124,14 +124,19 @@ def request(query, params):
         google_info['params'].pop(key, None)
 
     # Base parameters
+    # Uses udm=7 for the modern GSA layout. While udm=7 and tbm=vid are used
+    # together to prevent redirects on residential IPs, this configuration
+    # remains sensitive to high-risk proxy IPs (e.g. Cloudflare WARP) which
+    # may still trigger 302 redirects.
     query_params = {
         'q': query,
-        'oq': query,
         'udm': '7',
         'tbm': 'vid',
+        'filter': '0',
+        'source': 'lnms',
+        'aep': '1',
         'biw': '400',
         'bih': '700',
-        'sclient': 'mobile-gws-modeless-video',
         **google_info['params'],
     }
 
@@ -147,7 +152,36 @@ def request(query, params):
     
     params['url'] = query_url
     params['cookies'] = google_info['cookies']
+    # Add SOCS and layout bucket cookies to bypass modern consent redirects
+    params['cookies'].update({
+        'SOCS': 'CAESHAgCEhJnd3NfMjAyNDA2MTAtMF9SQzEaAmVuIAEaBgiA_LuwBg',
+        '__Secure-BUCKET': 'CAE',
+    })
     params['headers'].update(google_info['headers'])
+
+    # Add browser-like headers to better mimic a real client.
+    params['headers'].update({
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'en-GB,en;q=0.9',
+        'Priority': 'u=0, i',
+        'Referer': query_url,
+        'Sec-CH-UA': '""',
+        'Sec-CH-UA-Arch': '""',
+        'Sec-CH-UA-Bitness': '"64"',
+        'Sec-CH-UA-Full-Version-List': '""',
+        'Sec-CH-UA-Mobile': '?1',
+        'Sec-CH-UA-Model': '""',
+        'Sec-CH-UA-Platform': '""',
+        'Sec-CH-UA-Platform-Version': '""',
+        'Sec-CH-UA-Wow64': '?0',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-GPC': '1',
+        'Upgrade-Insecure-Requests': '1',
+    })
+
     return params
 
 
