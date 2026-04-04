@@ -82,7 +82,7 @@ def parse_data_images(text: str):
                 data_image_map[img_id] = val.encode('utf-8').decode('unicode-escape')
             except Exception:  # pylint: disable=broad-except
                 pass
-        
+
         if isinstance(val, str) and val.startswith("data:image"):
             end_pos = val.rfind("=")
             if end_pos > 0:
@@ -118,11 +118,6 @@ def request(query, params):
     """Google-Video search request"""
     google_info = get_google_info(params, traits)
 
-    # Remove standard Google parameters except for 'hl' (interface language)
-    # which is needed to maintain a consistent HTML layout for parsing.
-    for key in ['lr', 'cr', 'ie', 'oe']:
-        google_info['params'].pop(key, None)
-
     # Base parameters
     # Uses udm=7 for the modern GSA layout. While udm=7 and tbm=vid are used
     # together to prevent redirects on residential IPs, this configuration
@@ -130,7 +125,6 @@ def request(query, params):
     # may still trigger 302 redirects.
     query_params = {
         'q': query,
-        'udm': '7',
         'tbm': 'vid',
         'filter': '0',
         'source': 'lnms',
@@ -144,43 +138,16 @@ def request(query, params):
         query_params['start'] = (params['pageno'] - 1) * 10
 
     query_url = 'https://' + google_info['subdomain'] + '/search?' + urlencode(query_params)
+    query_url += '&udm=7'
 
     if params['time_range'] in time_range_dict:
         query_url += '&' + urlencode({'tbs': 'qdr:' + time_range_dict[params['time_range']]})
     if 'safesearch' in params:
         query_url += '&' + urlencode({'safe': filter_mapping[params['safesearch']]})
-    
+
     params['url'] = query_url
     params['cookies'] = google_info['cookies']
-    # Add SOCS and layout bucket cookies to bypass modern consent redirects
-    params['cookies'].update({
-        'SOCS': 'CAESHAgCEhJnd3NfMjAyNDA2MTAtMF9SQzEaAmVuIAEaBgiA_LuwBg',
-        '__Secure-BUCKET': 'CAE',
-    })
     params['headers'].update(google_info['headers'])
-
-    # Add browser-like headers to better mimic a real client.
-    params['headers'].update({
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'Accept-Language': 'en-GB,en;q=0.9',
-        'Priority': 'u=0, i',
-        'Referer': query_url,
-        'Sec-CH-UA': '""',
-        'Sec-CH-UA-Arch': '""',
-        'Sec-CH-UA-Bitness': '"64"',
-        'Sec-CH-UA-Full-Version-List': '""',
-        'Sec-CH-UA-Mobile': '?1',
-        'Sec-CH-UA-Model': '""',
-        'Sec-CH-UA-Platform': '""',
-        'Sec-CH-UA-Platform-Version': '""',
-        'Sec-CH-UA-Wow64': '?0',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-GPC': '1',
-        'Upgrade-Insecure-Requests': '1',
-    })
 
     return params
 
@@ -210,15 +177,15 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
             url = unquote(url[7:].split('&sa=U')[0])
 
         content = script_descriptions.get(title, "")
-        
+
         # Metadata parsing (Split Author and Date)
         metadata_div = eval_xpath_getindex(result, './/div[contains(@class, "WRu9Cd")]', 0, default=None)
         pub_info = extract_text(metadata_div) if metadata_div is not None else ""
-        
+
         author = None
         metadata = []
         if pub_info:
-            # Matches strings like "YouTube · Ginger Cat1 month ago" 
+            # Matches strings like "YouTube · Ginger Cat1 month ago"
             # or "YouTube · The Dodo2 days ago"
             m = re.match(r'(.*?·\s*.*?)(\d+\s+\w+\s+ago|\d+\s+\w+\s+\d{4})', pub_info)
             if m:
@@ -237,22 +204,30 @@ def parse_layout_1(dom, text, data_image_map, script_descriptions):
                     thumbnail = data_image_map[img_id]
                 else:
                     thumbnail = img_node.get("src")
-                    if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
+                    if not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail:
                         thumbnail = img_node.get("data-src") or thumbnail
 
         if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail) and video_id:
             thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
 
-        duration = extract_text(eval_xpath_getindex(result, './/span[contains(@class, "k1U36b")]', 0, default=None), allow_none=True)
+        duration = extract_text(
+            eval_xpath_getindex(result, './/span[contains(@class, "k1U36b")]', 0, default=None), allow_none=True
+        )
 
         if title and url:
-            results.append({
-                'url': url, 'title': title, 'content': content or '',
-                'author': author, 'thumbnail': thumbnail, 'length': duration,
-                'iframe_src': get_embeded_stream_url(url) if url else None,
-                'template': 'videos.html',
-                'metadata': " | ".join(metadata) if metadata else None,
-            })
+            results.append(
+                {
+                    'url': url,
+                    'title': title,
+                    'content': content or '',
+                    'author': author,
+                    'thumbnail': thumbnail,
+                    'length': duration,
+                    'iframe_src': get_embeded_stream_url(url) if url else None,
+                    'template': 'videos.html',
+                    'metadata': " | ".join(metadata) if metadata else None,
+                }
+            )
     return results
 
 
@@ -286,11 +261,11 @@ def parse_layout_2(dom, text, data_image_map, script_descriptions):
         duration = None
         metadata = []
         metadata_text = extract_text(result)
-        
+
         dur_match = re.search(r'Duration:\s*(\d+:\d+)', metadata_text)
         if dur_match:
             duration = dur_match.group(1)
-        
+
         # Capture date as generic metadata
         post_match = re.search(r'Posted:\s*([^<]+)', metadata_text)
         if post_match:
@@ -307,21 +282,23 @@ def parse_layout_2(dom, text, data_image_map, script_descriptions):
                     thumbnail = data_image_map[img_id]
                 else:
                     thumbnail = img_node.get("src")
-                    if (not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail):
+                    if not thumbnail or 'base64,R0lGODlhAQABA' in thumbnail:
                         thumbnail = img_node.get("data-src") or thumbnail
 
         if title and url:
-            results.append({
-                'url': url,
-                'title': title,
-                'content': content or '',
-                'author': None,  # Layout 2 doesn't provide author
-                'thumbnail': thumbnail,
-                'length': duration,
-                'iframe_src': get_embeded_stream_url(url) if url else None,
-                'template': 'videos.html',
-                'metadata': " | ".join(metadata) if metadata else None,
-            })
+            results.append(
+                {
+                    'url': url,
+                    'title': title,
+                    'content': content or '',
+                    'author': None,  # Layout 2 doesn't provide author
+                    'thumbnail': thumbnail,
+                    'length': duration,
+                    'iframe_src': get_embeded_stream_url(url) if url else None,
+                    'template': 'videos.html',
+                    'metadata': " | ".join(metadata) if metadata else None,
+                }
+            )
     return results
 
 
